@@ -8,10 +8,15 @@ namespace PrecastTracker.Business;
 public class ConcreteReportBusiness : BaseBusiness<ConcreteReportBusiness>, IConcreteReportBusiness
 {
     private readonly IConcreteTestService _service;
+    private readonly IAgeCalculatorService _ageCalculatorService;
 
-    public ConcreteReportBusiness(IConcreteTestService service, ILogger<ConcreteReportBusiness> logger) : base(logger)
+    public ConcreteReportBusiness(
+        IConcreteTestService service,
+        IAgeCalculatorService ageCalculatorService,
+        ILogger<ConcreteReportBusiness> logger) : base(logger)
     {
         _service = service;
+        _ageCalculatorService = ageCalculatorService;
     }
 
     public async Task<BusinessResult<IEnumerable<ConcreteReportResponse>>> GetConcreteReportAsync()
@@ -33,7 +38,7 @@ public class ConcreteReportBusiness : BaseBusiness<ConcreteReportBusiness>, ICon
         }
     }
 
-    private static ConcreteReportResponse MapToReportResponse(Data.Entities.ConcreteTest test)
+    private ConcreteReportResponse MapToReportResponse(Data.Entities.ConcreteTest test)
     {
         return new ConcreteReportResponse
         {
@@ -50,7 +55,7 @@ public class ConcreteReportBusiness : BaseBusiness<ConcreteReportBusiness>, ICon
             PourId = test.Placement.Pour.Code,
             PieceType = test.Placement.PieceType ?? string.Empty,
             OvenId = test.Placement.OvenId ?? string.Empty,
-            AgeOfTest = CalculateAgeOfTest(test.Placement.Pour.CastingDate, test.Placement.BatchingStartTime, test.TestingDate),
+            AgeOfTest = _ageCalculatorService.CalculateAgeOfTest(test.Placement.Pour.CastingDate, test.Placement.BatchingStartTime, test.TestingDate),
             TestingDate = FormatTestingDate(test.TestingDate),
             Required = $"{test.RequiredPsi}",
             Break1 = test.Break1?.ToString() ?? string.Empty,
@@ -59,36 +64,6 @@ public class ConcreteReportBusiness : BaseBusiness<ConcreteReportBusiness>, ICon
             AveragePsi = CalculateAveragePsi(test.Break1, test.Break2, test.Break3),
             Comments = test.Comments ?? string.Empty
         };
-    }
-
-    // TODO: Add unit test for CalculateAgeOfTest covering the following cases:
-    // 1. Tests >= 2 days old should return just the day number (e.g., "7", "28") using date-only calculation
-    // 2. Tests < 2 days old should return detailed format (e.g., "0d 12:53", "1d 3:45") using precise time calculation
-    // 3. Empty testingDate should return empty string
-    // 4. For tests < 2 days, use castingDate + batchingStartTime as start point; for >= 2 days, ignore time component
-    private static string CalculateAgeOfTest(DateTime castingDate, TimeSpan? batchingStartTime, DateTime? testingDate)
-    {
-        if (!testingDate.HasValue)
-            return string.Empty;
-
-        // First check if test is >= 2 days old using date-only comparison
-        var daysDifference = (testingDate.Value.Date - castingDate.Date).Days;
-
-        // If test is >= 2 days old, return just the day number (ignore time components)
-        if (daysDifference >= 2)
-            return daysDifference.ToString();
-
-        // For tests < 2 days old, use precise time calculation
-        var startDateTime = batchingStartTime.HasValue
-            ? castingDate.Add(batchingStartTime.Value)
-            : castingDate;
-
-        var timeSpan = testingDate.Value - startDateTime;
-        var days = (int)timeSpan.TotalDays;
-        var hours = timeSpan.Hours;
-        var minutes = timeSpan.Minutes;
-
-        return $"{days}d {hours}:{minutes:00}";
     }
 
     private static string CalculateAveragePsi(int? break1, int? break2, int? break3)

@@ -30,8 +30,10 @@ public class ConcreteReportBusinessTests : IDisposable
         var repository = new ConcreteTestRepository(_context);
         var loggerService = LoggerFactory.Create(builder => builder.AddConsole()).CreateLogger<ConcreteTestService>();
         var service = new ConcreteTestService(repository, loggerService);
+        var loggerAgeCalculator = LoggerFactory.Create(builder => builder.AddConsole()).CreateLogger<AgeCalculatorService>();
+        var ageCalculatorService = new AgeCalculatorService(loggerAgeCalculator);
         var loggerBusiness = LoggerFactory.Create(builder => builder.AddConsole()).CreateLogger<ConcreteReportBusiness>();
-        _business = new ConcreteReportBusiness(service, loggerBusiness);
+        _business = new ConcreteReportBusiness(service, ageCalculatorService, loggerBusiness);
 
         // Get CSV path
         _csvPath = Path.Combine(AppContext.BaseDirectory, "Resources", "ConcreteReport.csv");
