@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using PrecastTracker.Data.Entities;
 
 namespace PrecastTracker.Data;
 
@@ -12,6 +13,13 @@ public class ApplicationDbContext : DbContext
         // Ensure lazy loading is disabled
         ChangeTracker.LazyLoadingEnabled = false;
     }
+
+    public DbSet<ConcreteTest> ConcreteTests { get; set; }
+    public DbSet<MixDesign> MixDesigns { get; set; }
+    public DbSet<Job> Jobs { get; set; }
+    public DbSet<Bed> Beds { get; set; }
+    public DbSet<Pour> Pours { get; set; }
+    public DbSet<Placement> Placements { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
