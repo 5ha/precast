@@ -61,12 +61,24 @@ public class ConcreteReportBusiness : BaseBusiness<ConcreteReportBusiness>, ICon
         };
     }
 
+    // TODO: Add unit test for CalculateAgeOfTest covering the following cases:
+    // 1. Tests >= 2 days old should return just the day number (e.g., "7", "28") using date-only calculation
+    // 2. Tests < 2 days old should return detailed format (e.g., "0d 12:53", "1d 3:45") using precise time calculation
+    // 3. Empty testingDate should return empty string
+    // 4. For tests < 2 days, use castingDate + batchingStartTime as start point; for >= 2 days, ignore time component
     private static string CalculateAgeOfTest(DateTime castingDate, TimeSpan? batchingStartTime, DateTime? testingDate)
     {
         if (!testingDate.HasValue)
             return string.Empty;
 
-        // Combine casting date with batching start time to get the actual start time
+        // First check if test is >= 2 days old using date-only comparison
+        var daysDifference = (testingDate.Value.Date - castingDate.Date).Days;
+
+        // If test is >= 2 days old, return just the day number (ignore time components)
+        if (daysDifference >= 2)
+            return daysDifference.ToString();
+
+        // For tests < 2 days old, use precise time calculation
         var startDateTime = batchingStartTime.HasValue
             ? castingDate.Add(batchingStartTime.Value)
             : castingDate;
@@ -75,10 +87,6 @@ public class ConcreteReportBusiness : BaseBusiness<ConcreteReportBusiness>, ICon
         var days = (int)timeSpan.TotalDays;
         var hours = timeSpan.Hours;
         var minutes = timeSpan.Minutes;
-
-        // Format: "7" for whole days, "0d 12:53" for fractional days
-        if (days > 0 && hours == 0 && minutes == 0)
-            return days.ToString();
 
         return $"{days}d {hours}:{minutes:00}";
     }
@@ -90,7 +98,7 @@ public class ConcreteReportBusiness : BaseBusiness<ConcreteReportBusiness>, ICon
         if (breaks.Count == 0)
             return string.Empty;
 
-        var average = breaks.Sum() / breaks.Count;
+        var average = (int)Math.Round((double)breaks.Sum() / breaks.Count, MidpointRounding.AwayFromZero);
         return average.ToString();
     }
 

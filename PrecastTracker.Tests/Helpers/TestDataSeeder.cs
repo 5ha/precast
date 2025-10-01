@@ -1,25 +1,13 @@
 using System.Globalization;
-using Microsoft.Extensions.Logging;
 using PrecastTracker.Data;
 using PrecastTracker.Data.Entities;
 
-namespace PrecastTracker.Services;
+namespace PrecastTracker.Tests.Helpers;
 
-public class DataSeederService : BaseService<DataSeederService>, IDataSeederService
+public static class TestDataSeeder
 {
-    private readonly ApplicationDbContext _context;
-    private readonly IUnitOfWork _unitOfWork;
-
-    public DataSeederService(ApplicationDbContext context, IUnitOfWork unitOfWork, ILogger<DataSeederService> logger) : base(logger)
+    public static async Task SeedFromCsvAsync(ApplicationDbContext context, string csvFilePath)
     {
-        _context = context;
-        _unitOfWork = unitOfWork;
-    }
-
-    public async Task SeedFromCsvAsync(string csvFilePath)
-    {
-        _logger.LogInformation("Starting data seeding from CSV: {CsvFilePath}", csvFilePath);
-
         var lines = await File.ReadAllLinesAsync(csvFilePath);
 
         // Skip header and BOM
@@ -29,17 +17,14 @@ public class DataSeederService : BaseService<DataSeederService>, IDataSeederServ
         var jobCache = new Dictionary<string, Job>();
         var bedCache = new Dictionary<string, Bed>();
         var pourCache = new Dictionary<string, Pour>();
-        var placementCache = new Dictionary<string, Placement>(); // Key: unique combo of placement properties
+        var placementCache = new Dictionary<string, Placement>();
 
         foreach (var line in dataLines)
         {
             var fields = ParseCsvLine(line);
 
             if (fields.Length < 21)
-            {
-                _logger.LogWarning("Skipping invalid line: {Line}", line);
                 continue;
-            }
 
             // Parse fields
             var testCode = fields[0].Trim();
@@ -55,24 +40,22 @@ public class DataSeederService : BaseService<DataSeederService>, IDataSeederServ
             var pourCode = fields[10].Trim();
             var pieceType = fields[11].Trim();
             var ovenId = fields[12].Trim();
-            var ageOfTest = fields[13].Trim(); // Not stored, only for reference
             var testingDate = ParseTestingDate(fields[14]);
             var requiredPsi = ParseInt(fields[15]) ?? 0;
             var break1 = ParseInt(fields[16]);
             var break2 = ParseInt(fields[17]);
             var break3 = ParseInt(fields[18]);
-            var averagePsi = ParseInt(fields[19]); // Not stored, can be calculated
             var comments = fields[20].Trim();
 
             // Get or create MixDesign
             if (!mixDesignCache.TryGetValue(mixDesignCode, out var mixDesign))
             {
-                mixDesign = _context.MixDesigns.FirstOrDefault(m => m.Code == mixDesignCode);
+                mixDesign = context.MixDesigns.FirstOrDefault(m => m.Code == mixDesignCode);
                 if (mixDesign == null)
                 {
                     mixDesign = new MixDesign { Code = mixDesignCode };
-                    _context.MixDesigns.Add(mixDesign);
-                    await _unitOfWork.SaveChangesAsync();
+                    context.MixDesigns.Add(mixDesign);
+                    await context.SaveChangesAsync();
                 }
                 mixDesignCache[mixDesignCode] = mixDesign;
             }
@@ -80,12 +63,12 @@ public class DataSeederService : BaseService<DataSeederService>, IDataSeederServ
             // Get or create Job
             if (!jobCache.TryGetValue(jobCode, out var job))
             {
-                job = _context.Jobs.FirstOrDefault(j => j.Code == jobCode);
+                job = context.Jobs.FirstOrDefault(j => j.Code == jobCode);
                 if (job == null)
                 {
                     job = new Job { Code = jobCode, Name = jobName };
-                    _context.Jobs.Add(job);
-                    await _unitOfWork.SaveChangesAsync();
+                    context.Jobs.Add(job);
+                    await context.SaveChangesAsync();
                 }
                 jobCache[jobCode] = job;
             }
@@ -93,21 +76,21 @@ public class DataSeederService : BaseService<DataSeederService>, IDataSeederServ
             // Get or create Bed
             if (!bedCache.TryGetValue(bedCode, out var bed))
             {
-                bed = _context.Beds.FirstOrDefault(b => b.Code == bedCode);
+                bed = context.Beds.FirstOrDefault(b => b.Code == bedCode);
                 if (bed == null)
                 {
                     bed = new Bed { Code = bedCode };
-                    _context.Beds.Add(bed);
-                    await _unitOfWork.SaveChangesAsync();
+                    context.Beds.Add(bed);
+                    await context.SaveChangesAsync();
                 }
                 bedCache[bedCode] = bed;
             }
 
-            // Get or create Pour (Job + Bed + Casting Date + Pour Code)
+            // Get or create Pour
             var pourKey = $"{pourCode}_{jobCode}_{bedCode}_{castingDate:yyyyMMdd}";
             if (!pourCache.TryGetValue(pourKey, out var pour))
             {
-                pour = _context.Pours.FirstOrDefault(p =>
+                pour = context.Pours.FirstOrDefault(p =>
                     p.Code == pourCode &&
                     p.JobId == job.JobId &&
                     p.BedId == bed.BedId &&
@@ -122,17 +105,17 @@ public class DataSeederService : BaseService<DataSeederService>, IDataSeederServ
                         JobId = job.JobId,
                         BedId = bed.BedId
                     };
-                    _context.Pours.Add(pour);
-                    await _unitOfWork.SaveChangesAsync();
+                    context.Pours.Add(pour);
+                    await context.SaveChangesAsync();
                 }
                 pourCache[pourKey] = pour;
             }
 
-            // Get or create Placement (unique combination of Pour + Mix + Yards + Time + Trucks + Piece + Oven)
+            // Get or create Placement
             var placementKey = $"{pourKey}_{mixDesignCode}_{yardsPerBed}_{batchingStartTime?.ToString() ?? ""}_{truckNumbers}_{pieceType}_{ovenId}";
             if (!placementCache.TryGetValue(placementKey, out var placement))
             {
-                placement = _context.Placements.FirstOrDefault(p =>
+                placement = context.Placements.FirstOrDefault(p =>
                     p.PourId == pour.PourId &&
                     p.MixDesignId == mixDesign.MixDesignId &&
                     p.YardsPerBed == yardsPerBed &&
@@ -153,8 +136,8 @@ public class DataSeederService : BaseService<DataSeederService>, IDataSeederServ
                         PieceType = string.IsNullOrWhiteSpace(pieceType) ? null : pieceType,
                         OvenId = string.IsNullOrWhiteSpace(ovenId) ? null : ovenId
                     };
-                    _context.Placements.Add(placement);
-                    await _unitOfWork.SaveChangesAsync();
+                    context.Placements.Add(placement);
+                    await context.SaveChangesAsync();
                 }
                 placementCache[placementKey] = placement;
             }
@@ -173,11 +156,10 @@ public class DataSeederService : BaseService<DataSeederService>, IDataSeederServ
                 Comments = string.IsNullOrWhiteSpace(comments) ? null : comments
             };
 
-            _context.ConcreteTests.Add(test);
+            context.ConcreteTests.Add(test);
         }
 
-        await _unitOfWork.SaveChangesAsync();
-        _logger.LogInformation("Data seeding completed successfully");
+        await context.SaveChangesAsync();
     }
 
     private static string[] ParseCsvLine(string line)
@@ -230,21 +212,18 @@ public class DataSeederService : BaseService<DataSeederService>, IDataSeederServ
         if (string.IsNullOrWhiteSpace(dateStr) || dateStr.Contains("#"))
             return null;
 
-        // Try formats like "9/16", "10/7", "9/9/25 22:17"
         if (dateStr.Contains("/"))
         {
-            var parts = dateStr.Split(' ');
-            var datePart = parts[0];
-            var timePart = parts.Length > 1 ? parts[1] : null;
-
             // Try full date with time
             if (DateTime.TryParse(dateStr, out var fullDate))
                 return fullDate;
 
             // Try with current year assumption for MM/dd format
+            var parts = dateStr.Split(' ');
+            var datePart = parts[0];
+
             if (DateTime.TryParseExact(datePart, "M/d", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date))
             {
-                // Assume 2025 based on casting dates
                 return new DateTime(2025, date.Month, date.Day);
             }
         }
