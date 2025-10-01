@@ -1,0 +1,3 @@
+# Concrete Ordering Portal
+
+I need to create a portal to post orders for concrete. The portal will need to be tied to Microsoft Teams to send notifications and will need to log all the information acquired by every step of the ordering process. The final report will need to look similar to the attached snapshot (it doesn't have to be Excel), but the data collection center will need to be (I think) Excel.
