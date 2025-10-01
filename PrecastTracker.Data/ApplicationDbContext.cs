@@ -20,6 +20,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Bed> Beds { get; set; }
     public DbSet<Pour> Pours { get; set; }
     public DbSet<Placement> Placements { get; set; }
+    public DbSet<BedStatusLog> BedStatusLogs { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
