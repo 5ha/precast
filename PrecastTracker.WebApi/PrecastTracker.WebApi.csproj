@@ -4,6 +4,12 @@
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- Disable all static web assets processing -->
+    <DisableStaticWebAssetsBuild>true</DisableStaticWebAssetsBuild>
+    <DisableBuildCompression>true</DisableBuildCompression>
+    <SkipStaticWebAssetsCopyToPublishDirectory>true</SkipStaticWebAssetsCopyToPublishDirectory>
+    <EnableDefaultStaticWebAssets>false</EnableDefaultStaticWebAssets>
   </PropertyGroup>
 
   <ItemGroup>
@@ -33,5 +39,33 @@
     <Exec Command="dotnet tool restore" WorkingDirectory="$(ProjectDir)" />
     <Exec Command="dotnet tool run nswag run nswag.json" WorkingDirectory="$(ProjectDir)" />
   </Target>
+
+  <!-- Build Svelte app as part of publish process -->
+  <Target Name="BuildSvelteAppForPublish"
+          BeforeTargets="CopyFilesToPublishDirectory"
+          Condition="'$(Configuration)' == 'Release'">
+    <Message Importance="high" Text="Starting Svelte app build for publishing..." />
+    <Exec WorkingDirectory="$(ProjectDir)client-app" Command="npm ci" />
+    <Exec WorkingDirectory="$(ProjectDir)client-app" Command="npm run build" />
+    <Message Importance="high" Text="Svelte app build completed." />
+  </Target>
+
+  <!-- Directly copy Svelte output to publish directory -->
+  <Target Name="CopySvelteAppToPublishDir"
+          AfterTargets="BuildSvelteAppForPublish"
+          BeforeTargets="CopyFilesToPublishDirectory">
+    <Message Importance="high" Text="Manually copying Svelte app to publish directory..." />
+    <ItemGroup>
+      <_SvelteFilesToCopy Include="$(ProjectDir)wwwroot\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_SvelteFilesToCopy)"
+          DestinationFiles="@(_SvelteFilesToCopy->'$(PublishDir)wwwroot\%(RecursiveDir)%(Filename)%(Extension)')" />
+    <Message Importance="high" Text="Copied Svelte files to publish directory" />
+  </Target>
+
+  <!-- Exclude wwwroot content from the standard publish process -->
+  <ItemGroup>
+    <Content Update="wwwroot\**\*" CopyToPublishDirectory="Never" />
+  </ItemGroup>
 
 </Project>

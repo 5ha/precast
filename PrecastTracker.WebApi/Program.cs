@@ -53,7 +53,13 @@ app.UseHttpsRedirection();
 
 app.UseCors();
 
+// Serve static files from wwwroot (SvelteKit output)
+app.UseStaticFiles();
+
 // Map attribute-routed controller endpoints into the pipeline (must come after middleware is set up).
 app.MapControllers();
+
+// SPA fallback for client-side routing
+app.MapFallbackToFile("index.html");
 
 app.Run();
