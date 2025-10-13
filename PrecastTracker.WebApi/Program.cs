@@ -18,6 +18,10 @@ builder.Services.AddData(builder.Configuration);
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
+// Add Swagger/OpenAPI support
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
 // Configure CORS
 builder.Services.AddCors(options =>
 {
@@ -35,6 +39,8 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
 // Global exception handler: catches unhandled exceptions and (with AddProblemDetails) returns JSON ProblemDetails.

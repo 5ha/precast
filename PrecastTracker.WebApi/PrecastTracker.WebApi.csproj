@@ -12,6 +12,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.6" />
   </ItemGroup>
 
   <ItemGroup>
@@ -19,5 +20,18 @@
     <ProjectReference Include="..\PrecastTracker.Services\PrecastTracker.Services.csproj" />
     <ProjectReference Include="..\PrecastTracker.Contracts\PrecastTracker.Contracts.csproj" />
   </ItemGroup>
+
+  <Target Name="EnsureApiClientDirectory" BeforeTargets="EmitSwagger">
+    <MakeDir Directories="$(ProjectDir)client-app/src/lib/api/generated" />
+  </Target>
+
+  <Target Name="EmitSwagger" AfterTargets="Build">
+    <Exec Command="dotnet swagger tofile --output $(ProjectDir)swagger.json $(TargetPath) v1" />
+  </Target>
+
+  <Target Name="GenerateTypeScriptClient" AfterTargets="EmitSwagger">
+    <Exec Command="dotnet tool restore" WorkingDirectory="$(ProjectDir)" />
+    <Exec Command="dotnet tool run nswag run nswag.json" WorkingDirectory="$(ProjectDir)" />
+  </Target>
 
 </Project>

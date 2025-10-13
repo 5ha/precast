@@ -1,0 +1,34 @@
+{
+  "openapi": "3.0.4",
+  "info": {
+    "title": "PrecastTracker.WebApi, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null",
+    "version": "1.0"
+  },
+  "paths": {
+    "/api/ConcreteReport/csv": {
+      "get": {
+        "tags": [
+          "ConcreteReport"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/ConcreteReport": {
+      "get": {
+        "tags": [
+          "ConcreteReport"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    }
+  },
+  "components": { }
+}
