@@ -7,12 +7,13 @@ Precast concrete manufacturing involves creating concrete elements (walls, slabs
 ## Production Workflow
 
 1. **Job Order**: A construction project orders specific precast elements
-2. **Production Scheduling**: Elements are scheduled for production on specific beds (casting surfaces)
-3. **Concrete Delivery**: Ready-mix concrete trucks deliver different mixes throughout the day
-4. **Casting**: Concrete is poured into forms on beds to create elements
-5. **Test Cylinders**: Small test cylinders are filled from each delivery for quality testing
-6. **Curing**: Elements and test cylinders are placed in ovens to accelerate curing
-7. **Testing**: Cylinders are crushed at specified ages (1 day, 7 days, 28 days) to verify strength
+2. **Production Scheduling**: Jobs are assigned to specific beds (casting surfaces) via Pours
+3. **Mix Batching**: Concrete mix designs are batched on specific dates creating MixBatches
+4. **Concrete Delivery**: Ready-mix trucks deliver concrete from MixBatches throughout the day
+5. **Casting**: Concrete is placed into forms on beds to create specific piece types (Placements)
+6. **Test Cylinders**: Small test cylinders are filled from each MixBatch for quality testing (TestSets)
+7. **Curing**: Elements and test cylinders are placed in ovens to accelerate curing
+8. **Testing**: Cylinders are crushed at specified ages (1 day, 7 days, 28 days) to verify strength
 
 ## Domain Entities
 
@@ -43,119 +44,245 @@ A casting surface where precast elements are formed. Think of it as a production
 
 ---
 
+### Production Day
+Represents a specific calendar date on which production occurs. This entity ensures that all activities (Pours, MixBatches) happening on the same day reference a single date source.
+
+**Properties:**
+- **ProductionDayId**: Unique identifier
+- **Date**: The calendar date (e.g., 09/10/2025)
+
+**Real-world context:**
+September 10, 2025 is a production day. All pours scheduled for that day and all mix batches prepared that day reference this single ProductionDay record.
+
+**Why this matters:**
+Concrete has a limited shelf life and must be used within hours of batching. A ProductionDay ensures that MixBatches and Pours are always on the same date, maintaining data integrity and reflecting the reality that batches cannot span multiple days.
+
+**Relationships:**
+- A ProductionDay can have multiple Pours
+- A ProductionDay can have multiple MixBatches
+
+---
+
 ### Mix Design
 A concrete recipe specifying the proportions of cement, aggregates, water, and admixtures.
 
 **Properties:**
+- **MixDesignId**: Unique identifier
 - **Code**: Mix identifier (e.g., "824.1", "2515.11")
 
 **Real-world context:** Different structural requirements need different concrete strengths. A 6000 PSI mix for beams is different from a 4500 PSI mix for wall panels.
 
 **Relationships:**
-- A Mix Design is used in multiple Elements
+- A Mix Design is used in multiple MixBatches
+- A Mix Design has multiple MixDesignRequirements (strength requirements at different test ages)
+
+---
+
+### Mix Design Requirement
+The required strength specifications for a mix design at different test ages.
+
+**Properties:**
+- **MixDesignRequirementId**: Unique identifier
+- **MixDesignId**: Which mix design this requirement belongs to
+- **TestType**: Age of test (1, 7, or 28 days)
+- **RequiredPsi**: Target strength the concrete must achieve at this age
+
+**Real-world context:**
+Mix Design 2509.1 has the following requirements:
+- 1-day test: 3500 PSI (early release criteria)
+- 7-day test: 6000 PSI (early strength verification)
+- 28-day test: 6000 PSI (design strength)
+
+Mix Design 622.1 might have different requirements:
+- 1-day test: 3500 PSI
+- 7-day test: 5000 PSI
+- 28-day test: 5000 PSI
+
+**Why this matters:**
+Mix designs are engineered recipes with specific strength targets. These requirements are part of the mix design specification and should be defined once, not repeated for every test.
+
+**Relationships:**
+- A MixDesignRequirement belongs to one Mix Design
+- TestSets validate against the appropriate MixDesignRequirement based on TestType
 
 ---
 
 ### Pour
-**Definition:** A production run for a specific Job on a specific Bed on a specific Date.
+**Definition:** The assignment of a Job to a Bed on a specific ProductionDay. A Pour represents the production scheduling decision - which job will be worked on, on which bed, on which day.
 
 **Properties:**
-- **Code**: Pour identifier (e.g., "6497", "6539")
+- **PourId**: Surrogate primary key
+- **ProductionDayId**: When the production is scheduled
 - **JobId**: Which project this production run is for
 - **BedId**: Which casting surface is being used
-- **Casting Date**: When the concrete was poured
+
+**Database Constraint:**
+- UNIQUE (ProductionDayId, PourId) - Enables composite foreign key from Placement
 
 **Real-world context:**
-On September 10, 2025, Bed 16 might be used to produce elements for Job "25-009 Dickinson HS". This production run is assigned Pour ID "6539". Throughout the day, multiple concrete trucks arrive with different mixes, each creating different elements on that same bed.
-
-**Important:** A single Pour can have multiple Placements because:
-- Different structural elements need different concrete mixes
-- Concrete is delivered in batches throughout the day
-- Multiple truck loads arrive at different times
+On September 10, 2025 (ProductionDay #100), Bed 16 is assigned to produce elements for Job "25-009 Dickinson HS". This assignment is Pour ID "6539". Throughout the day, different piece types will be cast using various concrete batches.
 
 **Relationships:**
 - A Pour belongs to one Job
 - A Pour uses one Bed
-- A Pour contains multiple Placements (different concrete deliveries/mixes)
+- A Pour belongs to one ProductionDay
+- A Pour contains multiple Placements (different piece types being cast)
 
 **Example:**
 ```
-Pour 6539 (Bed 16, Job 25-009 Dickinson HS, Date 09/10/2025):
-├─ Placement 1: Mix 622.1 delivered at 17:00 by trucks 6,7,8 (31.78 yards)
-└─ Placement 2: Mix 2509.1 delivered at 13:15 by trucks 3,4,5 (17.3 yards)
+Pour 6539 (Bed 16, Job 25-009 Dickinson HS, ProductionDay 09/10/2025):
+├─ Placement 1: Walls, Mix 622.1, started at 17:00, Oven 16
+└─ Placement 2: Walls, Mix 2509.1, started at 13:15, Oven 2
 ```
 
 ---
 
 ### Placement
-**Definition:** A specific concrete placement within a Pour - represents the act of placing fresh concrete into forms. Each placement is one concrete delivery/batch used to cast specific pieces.
+**Definition:** A specific piece type being cast during a Pour. A Placement represents the physical act of placing concrete to create a specific type of element.
 
 **Industry terminology note:** In the precast concrete industry, "placement" is the standard term for the act of placing fresh concrete into forms. This is distinct from the finished product (the element/piece), which is what gets shipped to the job site.
 
 **Properties:**
+- **PlacementId**: Surrogate primary key
+- **ProductionDayId**: Which production day (enforces Pour and MixBatch on same day)
 - **PourId**: Which production run this belongs to
-- **MixDesignId**: Which concrete recipe was used
-- **YardsPerBed**: Volume of concrete delivered (cubic yards)
-- **Batching Start Time**: When this concrete batch was prepared
-- **Truck Numbers**: Which ready-mix trucks delivered this concrete (e.g., "1, 2, 3, 4")
-- **Piece Type**: What's being cast (Walls, Slabs, Tees, etc.)
+- **MixBatchId**: Which concrete batch is being used
+- **PieceType**: What's being cast (Walls, Slabs, Tees, etc.)
+- **StartTime**: When concrete placement began for this piece type
+- **Volume**: Volume of concrete used (cubic yards)
 - **OvenId**: Which curing oven will be used
 
-**Real-world context:**
-During Pour 6539, at 13:15, trucks 3, 4, and 5 arrive with 17.3 cubic yards of Mix 2509.1. This concrete is used to cast wall panels. Test cylinders from this delivery are placed in Oven 2. This entire concrete placement is one Placement.
+**Database Constraints:**
+- FOREIGN KEY (ProductionDayId, PourId) REFERENCES Pour(ProductionDayId, PourId)
+- FOREIGN KEY (ProductionDayId, MixBatchId) REFERENCES MixBatch(ProductionDayId, MixBatchId)
 
-Later that same day at 17:00, trucks 6, 7, and 8 arrive with 31.78 cubic yards of Mix 622.1 for different wall panels. This is a separate Placement in the same Pour.
+**Why ProductionDayId is stored:**
+By storing ProductionDayId on Placement and using composite foreign keys, the database enforces that the Pour and MixBatch must be from the same ProductionDay. This prevents the physical impossibility of using concrete batched on a different day.
+
+**Real-world context:**
+During Pour 6539 on ProductionDay #100 (09/10/2025), at 13:15, wall panels are cast using MixBatch #12345 (Mix 2509.1). The placement uses 17.3 cubic yards and the finished pieces will cure in Oven 2. This is one Placement.
+
+Later that same day at 17:00, additional wall panels are cast using a different MixBatch #12346 (Mix 622.1), using 31.78 cubic yards, curing in Oven 16. This is a separate Placement in the same Pour.
 
 **Why Placement matters:**
-Each concrete delivery must be tested independently for quality control. If one batch fails testing, only the finished pieces (elements) from that specific placement are affected.
+Placement-specific 1-day tests allow quick quality checks for specific pieces. If a placement-specific test fails, only those pieces are affected.
 
 **Relationships:**
-- A Placement belongs to one Pour
-- A Placement uses one Mix Design
-- A Placement has multiple Concrete Tests (different test ages and cylinder types)
+- A Placement belongs to one Pour (on a specific ProductionDay)
+- A Placement uses one MixBatch (on the same ProductionDay)
+- A Placement has multiple TestSets (1-day, 7-day, and 28-day tests)
 
 ---
 
-### Concrete Test
-**Definition:** A strength test performed on a concrete test cylinder at a specific age.
+### MixBatch
+**Definition:** A concrete mix design that has been batched (prepared) on a specific ProductionDay. Represents the actual production of concrete from a mix design recipe.
 
 **Properties:**
-- **PlacementId**: Which concrete placement this test is from
-- **Test Code**: Test identifier (e.g., "9005", "9005.1", "9005.2")
-- **Cylinder ID**: Type/age indicator:
-  - **1C**: 1-day accelerated cure test
-  - **7C**: 7-day standard cure test
-  - **28C**: 28-day standard cure test
-- **Age of Test**: Actual age when tested (e.g., "7", "28", "0d 12:53" for hours)
-- **Testing Date**: When the cylinder was crushed
-- **Required PSI**: Target strength the concrete must achieve
-- **Break #1, #2, #3**: Individual test results (PSI) from crushing cylinders
-- **Average PSI**: Mean of the break results
-- **Comments**: Any notes about the test
-- **Oven ID**: Which oven the test cylinder was cured in
+- **MixBatchId**: Surrogate primary key
+- **ProductionDayId**: When the batch was prepared
+- **MixDesignId**: Which mix design recipe was used
+
+**Database Constraint:**
+- UNIQUE (ProductionDayId, MixBatchId) - Enables composite foreign key from Placement
 
 **Real-world context:**
-From Placement 1 (Mix 2509.1, 17.3 yards, Time 13:15), three test cylinders are filled:
-- One cylinder (1C) goes in an accelerated-heat oven, tested in ~12-24 hours
-- One cylinder (7C) cures normally, tested after 7 days
-- One cylinder (28C) cures normally, tested after 28 days
+Mix Design 2509.1 is batched on September 10, 2025 (ProductionDay #100). This creates MixBatch #12345. Throughout the day, multiple trucks deliver concrete from this batch to various placements. The batch is tested at 7 and 28 days to verify it meets the mix design specifications.
 
-Each cylinder is crushed in a compression machine, producing 2-3 test results that are averaged.
-
-**Test Code numbering:**
-- `9011`: Primary test series
-- `9011.1`: Secondary test from same placement (additional verification)
-- `9011.2`: Third test from same placement
-
-**Why multiple tests matter:**
-- 1-day tests allow quick release of elements from beds (faster production)
-- 7-day tests verify early strength development
-- 28-day tests verify final design strength
-- Multiple cylinders ensure test reliability
+**Why MixBatch matters:**
+Quality control testing (7-day and 28-day tests) is typically performed at the batch level, not per placement. This ensures the concrete recipe was properly executed. 1-day tests may be placement-specific for early strength verification.
 
 **Relationships:**
-- A Test belongs to one Element
-- Tests with the same base code (e.g., 9011, 9011.1) are from the same Element
+- A MixBatch is based on one Mix Design
+- A MixBatch belongs to one ProductionDay
+- A MixBatch is delivered by multiple Deliveries (trucks)
+- A MixBatch is used in one or more Placements (on the same ProductionDay)
+- A MixBatch's test results can be found via Placements → TestSets
+
+---
+
+### Delivery
+**Definition:** A ready-mix truck delivering concrete from a MixBatch.
+
+**Properties:**
+- **DeliveryId**: Unique identifier
+- **TruckId**: Truck number (e.g., "3", "6", "7")
+- **MixBatchId**: Which batch this delivery is from
+
+**Real-world context:**
+MixBatch #12345 (Mix 2509.1, ProductionDay 09/10/2025) is delivered by trucks 3, 4, and 5 throughout the day. Each truck is one Delivery.
+
+**Why Delivery matters:**
+Tracking which trucks delivered which batches provides traceability for quality issues and logistics management.
+
+**Relationships:**
+- A Delivery belongs to one MixBatch
+- Multiple Deliveries can deliver from the same MixBatch
+
+---
+
+### TestSet
+**Definition:** A group of test cylinders prepared for testing at a specific age (1, 7, or 28 days). All TestSets are associated with a specific Placement.
+
+**Properties:**
+- **TestSetId**: Unique identifier
+- **PlacementId**: Which placement this test set is for (required)
+- **TestType**: Age of test (1, 7, or 28 days)
+- **TestingDate**: When the cylinders are/were crushed
+- **Comments**: Any notes about the test set
+
+**Calculated Properties:**
+- **AgeOfTest**: Calculated as TestingDate minus Placement.StartTime
+- **AveragePsi**: Calculated from the average of all ConcreteTest.BreakPsi values in this TestSet
+- **MixBatchId**: Retrieved via Placement.MixBatchId (not stored directly)
+- **RequiredPsi**: Retrieved via Placement → MixBatch → MixDesign → MixDesignRequirement (where TestType matches)
+
+**Real-world context:**
+For Placement #456 (MixBatch #12345, Mix 2509.1, StartTime 13:15 on ProductionDay 09/10/2025):
+- TestSet #1: PlacementId 456, TestType 7, TestingDate 09/17/2025
+- TestSet #2: PlacementId 456, TestType 28, TestingDate 10/08/2025
+- TestSet #3: PlacementId 456, TestType 1, TestingDate 09/11/2025
+- RequiredPsi values come from MixDesignRequirements for Mix 2509.1
+
+For Placement #457 (MixBatch #12346, Mix 622.1, StartTime 17:00 on ProductionDay 09/10/2025):
+- TestSet #4: PlacementId 457, TestType 7, TestingDate 09/17/2025
+- TestSet #5: PlacementId 457, TestType 28, TestingDate 10/08/2025
+- TestSet #6: PlacementId 457, TestType 1, TestingDate 09/11/2025
+- RequiredPsi values come from MixDesignRequirements for Mix 622.1
+
+**Why TestSets matter:**
+- 7-day and 28-day tests verify the MixBatch meets design specifications (can query by MixBatchId via Placement)
+- 1-day tests allow quick release of specific pieces from that Placement
+- Multiple test cylinders per TestSet ensure reliability
+
+**Relationships:**
+- A TestSet belongs to one Placement (required)
+- A TestSet contains multiple ConcreteTests (individual cylinder breaks)
+- A TestSet's MixBatch can be found via Placement.MixBatchId
+
+---
+
+### ConcreteTest
+**Definition:** An individual compression test result from crushing one test cylinder.
+
+**Properties:**
+- **ConcreteTestId**: Unique identifier
+- **TestSetId**: Which test set this belongs to
+- **BreakPsi**: The compression strength result (PSI)
+
+**Real-world context:**
+TestSet #1 (7-day test for MixBatch #12345) has three test cylinders crushed:
+- ConcreteTest #1: BreakPsi 6463
+- ConcreteTest #2: BreakPsi 6427
+- ConcreteTest #3: BreakPsi 6445
+
+Average PSI for the TestSet = 6445 PSI
+
+**Why multiple breaks matter:**
+Multiple test cylinders from the same batch ensure test reliability. If one cylinder was damaged or improperly cured, the other results provide verification.
+
+**Relationships:**
+- A ConcreteTest belongs to one TestSet
+- Multiple ConcreteTests combine to determine if a TestSet passes or fails
 
 ---
 
@@ -165,42 +292,94 @@ Each cylinder is crushed in a compression machine, producing 2-3 test results th
 
 1. **Job Created:** "25-009 Dickinson HS"
 
-2. **Production Scheduled:** September 10, 2025, Bed 16
+2. **Production Day Created:** ProductionDay #100, Date 09/10/2025
 
-3. **Pour Begins:** Pour ID "6539" starts on Bed 16 for Job 25-009
+3. **Production Scheduled:** September 10, 2025, Bed 16
+   - Pour #6539 created: JobId "25-009", BedId "16", ProductionDayId 100
 
-4. **Morning Delivery (Element 1):**
-   - Time: 13:15
-   - Trucks 3, 4, 5 deliver 17.3 yards of Mix 2509.1
-   - Used to cast wall panels
-   - 3 test cylinders filled → Tests 9011 (7C), 9011 (28C), 9011.1 (1C)
-   - Cylinders placed in Oven 2
+4. **Mix Batching:**
+   - MixBatch #12345: MixDesignId 2509.1, ProductionDayId 100
+   - MixBatch #12346: MixDesignId 622.1, ProductionDayId 100
 
-5. **Afternoon Delivery (Element 2):**
-   - Time: 17:00
-   - Trucks 6, 7, 8 deliver 31.78 yards of Mix 622.1
-   - Used to cast different wall panels
-   - 1 test cylinder filled → Test 9010.2 (1C)
-   - Cylinder placed in Oven 16
+5. **Deliveries:**
+   - Delivery #1: Truck 3, MixBatch #12345
+   - Delivery #2: Truck 4, MixBatch #12345
+   - Delivery #3: Truck 5, MixBatch #12345
+   - Delivery #4: Truck 6, MixBatch #12346
+   - Delivery #5: Truck 7, MixBatch #12346
+   - Delivery #6: Truck 8, MixBatch #12346
 
-6. **Testing:**
-   - Test 9011.1 (1C): Crushed after 12 hours → 3580, 3503 PSI (avg 3542)
-   - Test 9011 (7C): Crushed after 7 days → 6463, 6427 PSI (avg 6445)
-   - Test 9011 (28C): Scheduled for 28 days
-   - Test 9010.2 (1C): Crushed after ~9 hours → 4419, 4305 PSI (avg 4368)
+6. **Placements:**
+   - Placement #456: ProductionDayId 100, PourId 6539, MixBatchId 12345, PieceType "Walls", StartTime 13:15, Volume 17.3 yards, OvenId 2
+   - Placement #457: ProductionDayId 100, PourId 6539, MixBatchId 12346, PieceType "Walls", StartTime 17:00, Volume 31.78 yards, OvenId 16
 
-**Result:** Pour 6539 contains 2 Elements with 4 total Tests, ensuring quality control for all concrete delivered that day.
+7. **MixDesignRequirements Referenced:**
+   - Mix 2509.1 Requirements: 1-day: 3500 PSI, 7-day: 6000 PSI, 28-day: 6000 PSI
+   - Mix 622.1 Requirements: 1-day: 3500 PSI, 7-day: 5000 PSI, 28-day: 5000 PSI
+
+8. **TestSets Created:**
+   - TestSet #101: PlacementId 456, TestType 7, TestingDate 09/17/2025
+   - TestSet #102: PlacementId 456, TestType 28, TestingDate 10/08/2025
+   - TestSet #103: PlacementId 456, TestType 1, TestingDate 09/11/2025
+   - TestSet #104: PlacementId 457, TestType 7, TestingDate 09/17/2025
+   - TestSet #105: PlacementId 457, TestType 28, TestingDate 10/08/2025
+   - TestSet #106: PlacementId 457, TestType 1, TestingDate 09/11/2025
+
+9. **Testing Results:**
+   - TestSet #101 (7-day, Placement 456, Mix 2509.1):
+     - ConcreteTest #1: BreakPsi 6463
+     - ConcreteTest #2: BreakPsi 6427
+     - Average: 6445 PSI → PASS (required 6000 per MixDesignRequirement)
+
+   - TestSet #103 (1-day, Placement 456, Mix 2509.1):
+     - ConcreteTest #3: BreakPsi 3580
+     - ConcreteTest #4: BreakPsi 3503
+     - Average: 3542 PSI → PASS (required 3500 per MixDesignRequirement)
+
+   - TestSet #106 (1-day, Placement 457, Mix 622.1):
+     - ConcreteTest #5: BreakPsi 4419
+     - ConcreteTest #6: BreakPsi 4305
+     - Average: 4362 PSI → PASS (required 3500 per MixDesignRequirement)
+
+**Result:** Pour 6539 has 2 Placements using 2 MixBatches, delivered by 6 trucks, with 6 TestSets ensuring quality control for all concrete used that day.
 
 ---
 
 ## Data Relationships Summary
 
 ```
+ProductionDay (1) ──< (M) Pour
+ProductionDay (1) ──< (M) MixBatch
+
 Job (1) ──< (M) Pour
 Bed (1) ──< (M) Pour
-MixDesign (1) ──< (M) Element
-Pour (1) ──< (M) Element
-Element (1) ──< (M) ConcreteTest
+Pour (1) ──< (M) Placement
+
+MixDesign (1) ──< (M) MixDesignRequirement
+MixDesign (1) ──< (M) MixBatch
+MixBatch (1) ──< (M) Delivery
+MixBatch (1) ──< (M) Placement
+Placement (1) ──< (M) TestSet
+
+TestSet (1) ──< (M) ConcreteTest
 ```
 
-**Key Insight:** The Pour → Element → Test hierarchy ensures traceability from the final strength test result all the way back to which truck delivered which concrete at what time for which job.
+**Key Insight:** The hierarchy ensures complete traceability and data integrity:
+- **ProductionDay** + **Composite Foreign Keys** ensure Pours and MixBatches used in the same Placement are always on the same date
+- **Controlled Redundancy**: ProductionDayId is stored on Placement to enable composite foreign keys to both Pour and MixBatch
+- **Database Enforced**: The unique constraints on Pour(ProductionDayId, PourId) and MixBatch(ProductionDayId, MixBatchId) combined with composite FKs from Placement make it impossible to reference a Pour and MixBatch from different days
+
+**Traceability:**
+- From a **ConcreteTest** result → **TestSet** → **Placement** → **MixBatch** → **MixDesign** (what recipe was used)
+- From a **TestSet** → **Placement** → **Pour** → **ProductionDay** (when it happened)
+- From a **TestSet** → **Placement** → **Pour** → **Job** (which project)
+- From a **MixBatch** → **Delivery** records (which trucks delivered)
+- From a **TestSet** → **MixDesign** → **MixDesignRequirement** (required strength criteria)
+
+This allows answering critical questions like:
+- "Which job used the concrete that failed testing?" - Follow TestSet → Placement → Pour → Job
+- "Which trucks delivered the batch that passed with 6445 PSI?" - Follow TestSet → Placement → MixBatch → Delivery
+- "Can we release the pieces from Placement #456 based on the 1-day test results?" - Query TestSet where PlacementId = 456 and TestType = 1, compare AveragePsi to MixDesignRequirement.RequiredPsi
+- "What were all the test results for MixBatch #12345?" - Query TestSet where Placement.MixBatchId = 12345
+- "What strength is required for this test?" - Follow TestSet → Placement → MixBatch → MixDesign → MixDesignRequirement (where TestType matches)
+- "Can MixBatch and Pour be on different dates in a Placement?" - NO - composite foreign keys enforce they share the same ProductionDayId
