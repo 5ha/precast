@@ -35,7 +35,7 @@ A construction project that requires precast concrete elements.
 A casting surface where precast elements are formed. Think of it as a production station.
 
 **Properties:**
-- **Code**: Bed identifier (e.g., "16", "2", "13")
+- **BedId**: Bed identifier (e.g., 16, 2, 13)
 
 **Real-world context:** A precast plant typically has multiple beds (10-50+). Each bed can produce different elements on different days.
 
@@ -55,11 +55,11 @@ Represents a specific calendar date on which production occurs. This entity ensu
 September 10, 2025 is a production day. All pours scheduled for that day and all mix batches prepared that day reference this single ProductionDay record.
 
 **Why this matters:**
-Concrete has a limited shelf life and must be used within hours of batching. A ProductionDay ensures that MixBatches and Pours are always on the same date, maintaining data integrity and reflecting the reality that batches cannot span multiple days.
+Concrete has a limited shelf life and must be used within hours of batching. A ProductionDay provides date normalization and ensures that MixBatches are tied to specific dates. Since Placements reference MixBatches, this inherently enforces that placements use concrete from the correct day.
 
 **Relationships:**
-- A ProductionDay can have multiple Pours
 - A ProductionDay can have multiple MixBatches
+- A ProductionDay can have multiple Placements (through MixBatches)
 
 ---
 
@@ -108,31 +108,27 @@ Mix designs are engineered recipes with specific strength targets. These require
 ---
 
 ### Pour
-**Definition:** The assignment of a Job to a Bed on a specific ProductionDay. A Pour represents the production scheduling decision - which job will be worked on, on which bed, on which day.
+**Definition:** The assignment of a Job to a Bed. A Pour represents the production scheduling decision - which job will be worked on and on which bed. A Pour typically lasts one day but can span multiple days, which can be determined by examining the Placements associated with that Pour.
 
 **Properties:**
 - **PourId**: Surrogate primary key
-- **ProductionDayId**: When the production is scheduled
 - **JobId**: Which project this production run is for
 - **BedId**: Which casting surface is being used
 
-**Database Constraint:**
-- UNIQUE (ProductionDayId, PourId) - Enables composite foreign key from Placement
-
 **Real-world context:**
-On September 10, 2025 (ProductionDay #100), Bed 16 is assigned to produce elements for Job "25-009 Dickinson HS". This assignment is Pour ID "6539". Throughout the day, different piece types will be cast using various concrete batches.
+Bed 16 is assigned to produce elements for Job "25-009 Dickinson HS". This assignment is Pour ID "6539". Over one or more days, different piece types will be cast using various concrete batches. To determine which days Pour 6539 spanned, query the distinct ProductionDays from its Placements.
 
 **Relationships:**
 - A Pour belongs to one Job
 - A Pour uses one Bed
-- A Pour belongs to one ProductionDay
-- A Pour contains multiple Placements (different piece types being cast)
+- A Pour contains multiple Placements (different piece types being cast on potentially different days)
 
 **Example:**
 ```
-Pour 6539 (Bed 16, Job 25-009 Dickinson HS, ProductionDay 09/10/2025):
-├─ Placement 1: Walls, Mix 622.1, started at 17:00, Oven 16
-└─ Placement 2: Walls, Mix 2509.1, started at 13:15, Oven 2
+Pour 6539 (Bed 16, Job 25-009 Dickinson HS):
+├─ Placement 1: ProductionDay 09/10/2025, Walls, Mix 622.1, started at 17:00, Oven 16
+├─ Placement 2: ProductionDay 09/10/2025, Walls, Mix 2509.1, started at 13:15, Oven 2
+└─ Placement 3: ProductionDay 09/11/2025, Walls, Mix 2515.3, started at 08:30, Oven 2
 ```
 
 ---
@@ -144,32 +140,29 @@ Pour 6539 (Bed 16, Job 25-009 Dickinson HS, ProductionDay 09/10/2025):
 
 **Properties:**
 - **PlacementId**: Surrogate primary key
-- **ProductionDayId**: Which production day (enforces Pour and MixBatch on same day)
 - **PourId**: Which production run this belongs to
 - **MixBatchId**: Which concrete batch is being used
 - **PieceType**: What's being cast (Walls, Slabs, Tees, etc.)
-- **StartTime**: When concrete placement began for this piece type
+- **StartTime**: Time of day when concrete placement began (time only - the date comes from MixBatch.ProductionDay)
 - **Volume**: Volume of concrete used (cubic yards)
 - **OvenId**: Which curing oven will be used
 
-**Database Constraints:**
-- FOREIGN KEY (ProductionDayId, PourId) REFERENCES Pour(ProductionDayId, PourId)
-- FOREIGN KEY (ProductionDayId, MixBatchId) REFERENCES MixBatch(ProductionDayId, MixBatchId)
-
-**Why ProductionDayId is stored:**
-By storing ProductionDayId on Placement and using composite foreign keys, the database enforces that the Pour and MixBatch must be from the same ProductionDay. This prevents the physical impossibility of using concrete batched on a different day.
+**Date Derivation:**
+The date when a Placement occurred is determined by following the relationship: Placement → MixBatch → ProductionDay. Since concrete must be used the same day it is batched, the Placement inherently occurs on the same day as its MixBatch.
 
 **Real-world context:**
-During Pour 6539 on ProductionDay #100 (09/10/2025), at 13:15, wall panels are cast using MixBatch #12345 (Mix 2509.1). The placement uses 17.3 cubic yards and the finished pieces will cure in Oven 2. This is one Placement.
+During Pour 6539, at 13:15, wall panels are cast using MixBatch #12345 (Mix 2509.1, ProductionDay 09/10/2025). The placement uses 17.3 cubic yards and the finished pieces will cure in Oven 2. This is one Placement.
 
-Later that same day at 17:00, additional wall panels are cast using a different MixBatch #12346 (Mix 622.1), using 31.78 cubic yards, curing in Oven 16. This is a separate Placement in the same Pour.
+Later that same day at 17:00, additional wall panels are cast using a different MixBatch #12346 (Mix 622.1, ProductionDay 09/10/2025), using 31.78 cubic yards, curing in Oven 16. This is a separate Placement in the same Pour.
+
+If Pour 6539 continues the next day, a third Placement might occur at 08:30 using MixBatch #12389 (ProductionDay 09/11/2025).
 
 **Why Placement matters:**
 Placement-specific 1-day tests allow quick quality checks for specific pieces. If a placement-specific test fails, only those pieces are affected.
 
 **Relationships:**
-- A Placement belongs to one Pour (on a specific ProductionDay)
-- A Placement uses one MixBatch (on the same ProductionDay)
+- A Placement belongs to one Pour
+- A Placement uses one MixBatch (which determines the ProductionDay)
 - A Placement has multiple TestSets (1-day, 7-day, and 28-day tests)
 
 ---
@@ -181,9 +174,6 @@ Placement-specific 1-day tests allow quick quality checks for specific pieces. I
 - **MixBatchId**: Surrogate primary key
 - **ProductionDayId**: When the batch was prepared
 - **MixDesignId**: Which mix design recipe was used
-
-**Database Constraint:**
-- UNIQUE (ProductionDayId, MixBatchId) - Enables composite foreign key from Placement
 
 **Real-world context:**
 Mix Design 2509.1 is batched on September 10, 2025 (ProductionDay #100). This creates MixBatch #12345. Throughout the day, multiple trucks deliver concrete from this batch to various placements. The batch is tested at 7 and 28 days to verify it meets the mix design specifications.
@@ -294,8 +284,8 @@ Multiple test cylinders from the same batch ensure test reliability. If one cyli
 
 2. **Production Day Created:** ProductionDay #100, Date 09/10/2025
 
-3. **Production Scheduled:** September 10, 2025, Bed 16
-   - Pour #6539 created: JobId "25-009", BedId "16", ProductionDayId 100
+3. **Production Scheduled:** Bed 16 assigned to Job 25-009
+   - Pour #6539 created: JobId "25-009", BedId "16"
 
 4. **Mix Batching:**
    - MixBatch #12345: MixDesignId 2509.1, ProductionDayId 100
@@ -310,8 +300,8 @@ Multiple test cylinders from the same batch ensure test reliability. If one cyli
    - Delivery #6: Truck 8, MixBatch #12346
 
 6. **Placements:**
-   - Placement #456: ProductionDayId 100, PourId 6539, MixBatchId 12345, PieceType "Walls", StartTime 13:15, Volume 17.3 yards, OvenId 2
-   - Placement #457: ProductionDayId 100, PourId 6539, MixBatchId 12346, PieceType "Walls", StartTime 17:00, Volume 31.78 yards, OvenId 16
+   - Placement #456: PourId 6539, MixBatchId 12345, PieceType "Walls", StartTime 13:15, Volume 17.3 yards, OvenId 2
+   - Placement #457: PourId 6539, MixBatchId 12346, PieceType "Walls", StartTime 17:00, Volume 31.78 yards, OvenId 16
 
 7. **MixDesignRequirements Referenced:**
    - Mix 2509.1 Requirements: 1-day: 3500 PSI, 7-day: 6000 PSI, 28-day: 6000 PSI
@@ -348,7 +338,6 @@ Multiple test cylinders from the same batch ensure test reliability. If one cyli
 ## Data Relationships Summary
 
 ```
-ProductionDay (1) ──< (M) Pour
 ProductionDay (1) ──< (M) MixBatch
 
 Job (1) ──< (M) Pour
@@ -365,13 +354,14 @@ TestSet (1) ──< (M) ConcreteTest
 ```
 
 **Key Insight:** The hierarchy ensures complete traceability and data integrity:
-- **ProductionDay** + **Composite Foreign Keys** ensure Pours and MixBatches used in the same Placement are always on the same date
-- **Controlled Redundancy**: ProductionDayId is stored on Placement to enable composite foreign keys to both Pour and MixBatch
-- **Database Enforced**: The unique constraints on Pour(ProductionDayId, PourId) and MixBatch(ProductionDayId, MixBatchId) combined with composite FKs from Placement make it impossible to reference a Pour and MixBatch from different days
+- **Pour**: Represents a Job-Bed assignment that can span multiple days
+- **ProductionDay + MixBatch**: Ensures concrete batches are tied to specific dates
+- **Natural Date Enforcement**: Since Placement references MixBatch, and MixBatch references ProductionDay, the date of a Placement is inherently enforced to be the same as the date the concrete was batched
+- **Simplified Model**: No composite foreign keys needed - all relationships use simple foreign keys
 
 **Traceability:**
 - From a **ConcreteTest** result → **TestSet** → **Placement** → **MixBatch** → **MixDesign** (what recipe was used)
-- From a **TestSet** → **Placement** → **Pour** → **ProductionDay** (when it happened)
+- From a **TestSet** → **Placement** → **MixBatch** → **ProductionDay** (when it happened)
 - From a **TestSet** → **Placement** → **Pour** → **Job** (which project)
 - From a **MixBatch** → **Delivery** records (which trucks delivered)
 - From a **TestSet** → **MixDesign** → **MixDesignRequirement** (required strength criteria)
@@ -382,4 +372,4 @@ This allows answering critical questions like:
 - "Can we release the pieces from Placement #456 based on the 1-day test results?" - Query TestSet where PlacementId = 456 and TestType = 1, compare AveragePsi to MixDesignRequirement.RequiredPsi
 - "What were all the test results for MixBatch #12345?" - Query TestSet where Placement.MixBatchId = 12345
 - "What strength is required for this test?" - Follow TestSet → Placement → MixBatch → MixDesign → MixDesignRequirement (where TestType matches)
-- "Can MixBatch and Pour be on different dates in a Placement?" - NO - composite foreign keys enforce they share the same ProductionDayId
+- "Which days did Pour 6539 span?" - Query SELECT DISTINCT ProductionDayId FROM Placement JOIN MixBatch WHERE PourId = 6539

@@ -14,10 +14,14 @@ public static class TestDataSeeder
         var dataLines = lines.Skip(1).Where(l => !string.IsNullOrWhiteSpace(l)).ToList();
 
         var mixDesignCache = new Dictionary<string, MixDesign>();
+        var mixDesignRequirementCache = new Dictionary<string, MixDesignRequirement>(); // Key: "MixDesignCode_TestType"
         var jobCache = new Dictionary<string, Job>();
         var bedCache = new Dictionary<string, Bed>();
-        var pourCache = new Dictionary<string, Pour>();
-        var placementCache = new Dictionary<string, Placement>();
+        var productionDayCache = new Dictionary<DateTime, ProductionDay>();
+        var pourCache = new Dictionary<string, Pour>(); // Key: "PourId"
+        var mixBatchCache = new Dictionary<int, MixBatch>();
+        var placementCache = new Dictionary<string, Placement>(); // Key: complex combination
+        var testSetCache = new Dictionary<string, TestSet>(); // Key: "PlacementId_TestType"
 
         foreach (var line in dataLines)
         {
@@ -27,17 +31,17 @@ public static class TestDataSeeder
                 continue;
 
             // Parse fields
-            var testCode = fields[0].Trim();
+            var testIdStr = fields[0].Trim();
             var cylinderId = fields[1].Trim();
             var castingDate = ParseDate(fields[2]);
             var mixDesignCode = fields[3].Trim();
-            var yardsPerBed = ParseDecimal(fields[4]);
+            var volume = ParseDecimal(fields[4]);
             var bedCode = fields[5].Trim();
-            var batchingStartTime = ParseTime(fields[6]);
+            var startTimeStr = fields[6].Trim();
             var jobCode = fields[7].Trim();
             var jobName = fields[8].Trim();
             var truckNumbers = fields[9].Trim();
-            var pourCode = fields[10].Trim();
+            var pourIdStr = fields[10].Trim();
             var pieceType = fields[11].Trim();
             var ovenId = fields[12].Trim();
             var testingDate = ParseTestingDate(fields[14]);
@@ -46,6 +50,12 @@ public static class TestDataSeeder
             var break2 = ParseInt(fields[17]);
             var break3 = ParseInt(fields[18]);
             var comments = fields[20].Trim();
+
+            // Parse Test ID to get MixBatchId (strip .1, .2, etc.)
+            var mixBatchId = ParseMixBatchId(testIdStr);
+
+            // Parse Cylinder ID to get TestType
+            var testType = ParseTestType(cylinderId);
 
             // Get or create MixDesign
             if (!mixDesignCache.TryGetValue(mixDesignCode, out var mixDesign))
@@ -58,6 +68,29 @@ public static class TestDataSeeder
                     await context.SaveChangesAsync();
                 }
                 mixDesignCache[mixDesignCode] = mixDesign;
+            }
+
+            // Get or create MixDesignRequirement
+            var reqKey = $"{mixDesignCode}_{testType}";
+            if (!mixDesignRequirementCache.TryGetValue(reqKey, out var mixDesignRequirement))
+            {
+                mixDesignRequirement = context.MixDesignRequirements.FirstOrDefault(r =>
+                    r.MixDesignId == mixDesign.MixDesignId && r.TestType == testType);
+
+                if (mixDesignRequirement == null && requiredPsi > 0)
+                {
+                    mixDesignRequirement = new MixDesignRequirement
+                    {
+                        MixDesignId = mixDesign.MixDesignId,
+                        TestType = testType,
+                        RequiredPsi = requiredPsi
+                    };
+                    context.MixDesignRequirements.Add(mixDesignRequirement);
+                    await context.SaveChangesAsync();
+                }
+
+                if (mixDesignRequirement != null)
+                    mixDesignRequirementCache[reqKey] = mixDesignRequirement;
             }
 
             // Get or create Job
@@ -73,35 +106,50 @@ public static class TestDataSeeder
                 jobCache[jobCode] = job;
             }
 
-            // Get or create Bed
+            // Get or create Bed (bedCode is the BedId as string, parse it)
             if (!bedCache.TryGetValue(bedCode, out var bed))
             {
-                bed = context.Beds.FirstOrDefault(b => b.Code == bedCode);
+                if (!int.TryParse(bedCode, out var bedId))
+                    throw new InvalidOperationException($"Invalid Bed ID: {bedCode}");
+
+                bed = context.Beds.FirstOrDefault(b => b.BedId == bedId);
                 if (bed == null)
                 {
-                    bed = new Bed { Code = bedCode };
+                    bed = new Bed { BedId = bedId };
                     context.Beds.Add(bed);
                     await context.SaveChangesAsync();
                 }
                 bedCache[bedCode] = bed;
             }
 
-            // Get or create Pour
-            var pourKey = $"{pourCode}_{jobCode}_{bedCode}_{castingDate:yyyyMMdd}";
+            // Get or create ProductionDay
+            if (!productionDayCache.TryGetValue(castingDate, out var productionDay))
+            {
+                productionDay = context.ProductionDays.FirstOrDefault(pd => pd.Date == castingDate);
+                if (productionDay == null)
+                {
+                    productionDay = new ProductionDay { Date = castingDate };
+                    context.ProductionDays.Add(productionDay);
+                    await context.SaveChangesAsync();
+                }
+                productionDayCache[castingDate] = productionDay;
+            }
+
+            // Parse Pour ID as integer
+            if (!int.TryParse(pourIdStr, out var pourId))
+                throw new InvalidOperationException($"Invalid Pour ID: {pourIdStr}");
+
+            // Get or create Pour (with explicit ID from CSV)
+            var pourKey = $"{pourId}";
             if (!pourCache.TryGetValue(pourKey, out var pour))
             {
-                pour = context.Pours.FirstOrDefault(p =>
-                    p.Code == pourCode &&
-                    p.JobId == job.JobId &&
-                    p.BedId == bed.BedId &&
-                    p.CastingDate == castingDate);
+                pour = context.Pours.FirstOrDefault(p => p.PourId == pourId);
 
                 if (pour == null)
                 {
                     pour = new Pour
                     {
-                        Code = pourCode,
-                        CastingDate = castingDate,
+                        PourId = pourId,
                         JobId = job.JobId,
                         BedId = bed.BedId
                     };
@@ -111,16 +159,36 @@ public static class TestDataSeeder
                 pourCache[pourKey] = pour;
             }
 
+            // Get or create MixBatch (with explicit ID)
+            if (!mixBatchCache.TryGetValue(mixBatchId, out var mixBatch))
+            {
+                mixBatch = context.MixBatches.FirstOrDefault(mb => mb.MixBatchId == mixBatchId);
+                if (mixBatch == null)
+                {
+                    mixBatch = new MixBatch
+                    {
+                        MixBatchId = mixBatchId,
+                        ProductionDayId = productionDay.ProductionDayId,
+                        MixDesignId = mixDesign.MixDesignId
+                    };
+                    context.MixBatches.Add(mixBatch);
+                    await context.SaveChangesAsync();
+                }
+                mixBatchCache[mixBatchId] = mixBatch;
+            }
+
+            // Parse start time (time only)
+            var startTime = ParseStartTimeSpan(startTimeStr);
+
             // Get or create Placement
-            var placementKey = $"{pourKey}_{mixDesignCode}_{yardsPerBed}_{batchingStartTime?.ToString() ?? ""}_{truckNumbers}_{pieceType}_{ovenId}";
+            var placementKey = $"{pour.PourId}_{mixBatch.MixBatchId}_{volume}_{startTime}_{pieceType}_{ovenId}";
             if (!placementCache.TryGetValue(placementKey, out var placement))
             {
                 placement = context.Placements.FirstOrDefault(p =>
                     p.PourId == pour.PourId &&
-                    p.MixDesignId == mixDesign.MixDesignId &&
-                    p.YardsPerBed == yardsPerBed &&
-                    p.BatchingStartTime == batchingStartTime &&
-                    p.TruckNumbers == truckNumbers &&
+                    p.MixBatchId == mixBatch.MixBatchId &&
+                    p.Volume == volume &&
+                    p.StartTime == startTime &&
                     p.PieceType == pieceType &&
                     p.OvenId == (string.IsNullOrWhiteSpace(ovenId) ? null : ovenId));
 
@@ -129,37 +197,120 @@ public static class TestDataSeeder
                     placement = new Placement
                     {
                         PourId = pour.PourId,
-                        MixDesignId = mixDesign.MixDesignId,
-                        YardsPerBed = yardsPerBed,
-                        BatchingStartTime = batchingStartTime,
-                        TruckNumbers = string.IsNullOrWhiteSpace(truckNumbers) ? null : truckNumbers,
-                        PieceType = string.IsNullOrWhiteSpace(pieceType) ? null : pieceType,
+                        MixBatchId = mixBatch.MixBatchId,
+                        PieceType = pieceType,
+                        StartTime = startTime,
+                        Volume = volume,
                         OvenId = string.IsNullOrWhiteSpace(ovenId) ? null : ovenId
                     };
                     context.Placements.Add(placement);
-                    await context.SaveChangesAsync();
+
+                    try
+                    {
+                        await context.SaveChangesAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new InvalidOperationException(
+                            $"Failed to save Placement. " +
+                            $"PourId={pour.PourId}, MixBatchId={mixBatch.MixBatchId}, " +
+                            $"TestIdStr={testIdStr}, CastingDate={castingDate:yyyy-MM-dd}", ex);
+                    }
                 }
                 placementCache[placementKey] = placement;
             }
 
-            // Create ConcreteTest
-            var test = new ConcreteTest
+            // Create Deliveries for this Placement (parse truck numbers)
+            if (!string.IsNullOrWhiteSpace(truckNumbers))
             {
-                TestCode = testCode,
-                CylinderId = cylinderId,
-                PlacementId = placement.PlacementId,
-                TestingDate = testingDate,
-                RequiredPsi = requiredPsi,
-                Break1 = break1,
-                Break2 = break2,
-                Break3 = break3,
-                Comments = string.IsNullOrWhiteSpace(comments) ? null : comments
-            };
+                var trucks = truckNumbers.Split(',').Select(t => t.Trim()).Where(t => !string.IsNullOrEmpty(t));
+                foreach (var truck in trucks)
+                {
+                    // Check if delivery already exists for this placement and truck
+                    var existingDelivery = context.Deliveries.FirstOrDefault(d =>
+                        d.PlacementId == placement.PlacementId && d.TruckId == truck);
 
-            context.ConcreteTests.Add(test);
+                    if (existingDelivery == null)
+                    {
+                        var delivery = new Delivery
+                        {
+                            PlacementId = placement.PlacementId,
+                            TruckId = truck
+                        };
+                        context.Deliveries.Add(delivery);
+                    }
+                }
+            }
+
+            // Get or create TestSet
+            var testSetKey = $"{placement.PlacementId}_{testType}";
+            if (!testSetCache.TryGetValue(testSetKey, out var testSet))
+            {
+                testSet = context.TestSets.FirstOrDefault(ts =>
+                    ts.PlacementId == placement.PlacementId &&
+                    ts.TestType == testType);
+
+                if (testSet == null)
+                {
+                    testSet = new TestSet
+                    {
+                        PlacementId = placement.PlacementId,
+                        TestType = testType,
+                        TestingDate = testingDate,
+                        Comments = string.IsNullOrWhiteSpace(comments) ? null : comments
+                    };
+                    context.TestSets.Add(testSet);
+                    await context.SaveChangesAsync();
+                }
+                testSetCache[testSetKey] = testSet;
+            }
+
+            // Create ConcreteTest records for each break value
+            var breaks = new[] { break1, break2, break3 }.Where(b => b.HasValue).ToList();
+            foreach (var breakPsi in breaks)
+            {
+                var test = new ConcreteTest
+                {
+                    TestSetId = testSet.TestSetId,
+                    BreakPsi = breakPsi!.Value
+                };
+                context.ConcreteTests.Add(test);
+            }
         }
 
         await context.SaveChangesAsync();
+    }
+
+    private static int ParseMixBatchId(string testIdStr)
+    {
+        // Strip .1, .2, etc. to get the MixBatchId
+        var parts = testIdStr.Split('.');
+        if (int.TryParse(parts[0], out var id))
+            return id;
+        return 0;
+    }
+
+    private static int ParseTestType(string cylinderId)
+    {
+        // "7C" = 7, "28C" = 28, "1C" = 1
+        if (cylinderId.EndsWith("C"))
+        {
+            var numStr = cylinderId.Substring(0, cylinderId.Length - 1);
+            if (int.TryParse(numStr, out var testType))
+                return testType;
+        }
+        return 0;
+    }
+
+    private static TimeSpan ParseStartTimeSpan(string timeStr)
+    {
+        if (string.IsNullOrWhiteSpace(timeStr))
+            return TimeSpan.Zero;
+
+        if (TimeSpan.TryParseExact(timeStr, @"h\:mm", CultureInfo.InvariantCulture, out var time))
+            return time;
+
+        return TimeSpan.Zero;
     }
 
     private static string[] ParseCsvLine(string line)
@@ -227,17 +378,6 @@ public static class TestDataSeeder
                 return new DateTime(2025, date.Month, date.Day);
             }
         }
-
-        return null;
-    }
-
-    private static TimeSpan? ParseTime(string timeStr)
-    {
-        if (string.IsNullOrWhiteSpace(timeStr))
-            return null;
-
-        if (TimeSpan.TryParseExact(timeStr, @"h\:mm", CultureInfo.InvariantCulture, out var time))
-            return time;
 
         return null;
     }

@@ -14,13 +14,17 @@ public class ApplicationDbContext : DbContext
         ChangeTracker.LazyLoadingEnabled = false;
     }
 
-    public DbSet<ConcreteTest> ConcreteTests { get; set; }
-    public DbSet<MixDesign> MixDesigns { get; set; }
+    public DbSet<ProductionDay> ProductionDays { get; set; }
     public DbSet<Job> Jobs { get; set; }
     public DbSet<Bed> Beds { get; set; }
+    public DbSet<MixDesign> MixDesigns { get; set; }
+    public DbSet<MixDesignRequirement> MixDesignRequirements { get; set; }
     public DbSet<Pour> Pours { get; set; }
+    public DbSet<MixBatch> MixBatches { get; set; }
+    public DbSet<Delivery> Deliveries { get; set; }
     public DbSet<Placement> Placements { get; set; }
-    public DbSet<BedStatusLog> BedStatusLogs { get; set; }
+    public DbSet<TestSet> TestSets { get; set; }
+    public DbSet<ConcreteTest> ConcreteTests { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

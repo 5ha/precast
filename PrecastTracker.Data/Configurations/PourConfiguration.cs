@@ -10,10 +10,6 @@ public class PourConfiguration : IEntityTypeConfiguration<Pour>
     {
         builder.HasKey(p => p.PourId);
 
-        builder.Property(p => p.Code)
-            .IsRequired()
-            .HasMaxLength(50);
-
         builder.HasOne(p => p.Job)
             .WithMany(j => j.Pours)
             .HasForeignKey(p => p.JobId)
@@ -24,9 +20,6 @@ public class PourConfiguration : IEntityTypeConfiguration<Pour>
             .HasForeignKey(p => p.BedId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasMany(p => p.Placements)
-            .WithOne(placement => placement.Pour)
-            .HasForeignKey(placement => placement.PourId)
-            .OnDelete(DeleteBehavior.Restrict);
+        // Placements relationship is configured in PlacementConfiguration
     }
 }

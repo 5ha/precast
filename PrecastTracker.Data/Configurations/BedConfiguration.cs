@@ -10,16 +10,10 @@ public class BedConfiguration : IEntityTypeConfiguration<Bed>
     {
         builder.HasKey(b => b.BedId);
 
-        builder.Property(b => b.Code)
-            .IsRequired()
-            .HasMaxLength(50);
+        // BedId is manually set from CSV data - configure to not use auto-increment
+        builder.Property(b => b.BedId)
+            .ValueGeneratedNever();
 
-        builder.HasIndex(b => b.Code)
-            .IsUnique();
-
-        builder.HasMany(b => b.Pours)
-            .WithOne(p => p.Bed)
-            .HasForeignKey(p => p.BedId)
-            .OnDelete(DeleteBehavior.Restrict);
+        // Don't configure Pours relationship here - it's configured in PourConfiguration
     }
 }

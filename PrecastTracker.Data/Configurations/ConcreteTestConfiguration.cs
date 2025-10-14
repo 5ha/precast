@@ -10,20 +10,12 @@ public class ConcreteTestConfiguration : IEntityTypeConfiguration<ConcreteTest>
     {
         builder.HasKey(ct => ct.ConcreteTestId);
 
-        builder.Property(ct => ct.TestCode)
-            .IsRequired()
-            .HasMaxLength(50);
+        builder.Property(ct => ct.BreakPsi)
+            .IsRequired();
 
-        builder.Property(ct => ct.CylinderId)
-            .IsRequired()
-            .HasMaxLength(50);
-
-        builder.Property(ct => ct.Comments)
-            .HasMaxLength(500);
-
-        builder.HasOne(ct => ct.Placement)
-            .WithMany(p => p.ConcreteTests)
-            .HasForeignKey(ct => ct.PlacementId)
+        builder.HasOne(ct => ct.TestSet)
+            .WithMany(ts => ts.ConcreteTests)
+            .HasForeignKey(ct => ct.TestSetId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

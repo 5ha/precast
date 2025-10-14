@@ -3,8 +3,6 @@ namespace PrecastTracker.Data.Entities;
 public class Pour
 {
     public int PourId { get; set; }
-    public string Code { get; set; } = string.Empty; // e.g., "6455", "6530"
-    public DateTime CastingDate { get; set; }
 
     // Foreign keys
     public int JobId { get; set; }
