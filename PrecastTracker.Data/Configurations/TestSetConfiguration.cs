@@ -15,9 +15,9 @@ public class TestSetConfiguration : IEntityTypeConfiguration<TestSet>
             .HasForeignKey(ts => ts.PlacementId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasMany(ts => ts.TestCylinders)
-            .WithOne(tc => tc.TestSet)
-            .HasForeignKey(tc => tc.TestSetId)
+        builder.HasMany(ts => ts.TestSetDays)
+            .WithOne(tsd => tsd.TestSet)
+            .HasForeignKey(tsd => tsd.TestSetId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

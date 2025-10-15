@@ -15,26 +15,31 @@ public class TestCylinderRepository : ITestCylinderRepository
     public async Task<IEnumerable<TestCylinder>> GetAllWithRelatedDataAsync()
     {
         return await _context.TestCylinders
-            .Include(tc => tc.TestSet)
-                .ThenInclude(ts => ts.Placement)
-                    .ThenInclude(p => p.MixBatch)
-                        .ThenInclude(mb => mb.MixDesign)
-                            .ThenInclude(md => md.MixDesignRequirements)
-            .Include(tc => tc.TestSet)
-                .ThenInclude(ts => ts.Placement)
-                    .ThenInclude(p => p.MixBatch)
-                        .ThenInclude(mb => mb.ProductionDay)
-            .Include(tc => tc.TestSet)
-                .ThenInclude(ts => ts.Placement)
-                    .ThenInclude(p => p.Deliveries)
-            .Include(tc => tc.TestSet)
-                .ThenInclude(ts => ts.Placement)
-                    .ThenInclude(p => p.Pour)
-                        .ThenInclude(pour => pour.Job)
-            .Include(tc => tc.TestSet)
-                .ThenInclude(ts => ts.Placement)
-                    .ThenInclude(p => p.Pour)
-                        .ThenInclude(pour => pour.Bed)
+            .Include(tc => tc.TestSetDay)
+                .ThenInclude(tsd => tsd.TestSet)
+                    .ThenInclude(ts => ts.Placement)
+                        .ThenInclude(p => p.MixBatch)
+                            .ThenInclude(mb => mb.MixDesign)
+                                .ThenInclude(md => md.MixDesignRequirements)
+            .Include(tc => tc.TestSetDay)
+                .ThenInclude(tsd => tsd.TestSet)
+                    .ThenInclude(ts => ts.Placement)
+                        .ThenInclude(p => p.MixBatch)
+                            .ThenInclude(mb => mb.ProductionDay)
+            .Include(tc => tc.TestSetDay)
+                .ThenInclude(tsd => tsd.TestSet)
+                    .ThenInclude(ts => ts.Placement)
+                        .ThenInclude(p => p.Deliveries)
+            .Include(tc => tc.TestSetDay)
+                .ThenInclude(tsd => tsd.TestSet)
+                    .ThenInclude(ts => ts.Placement)
+                        .ThenInclude(p => p.Pour)
+                            .ThenInclude(pour => pour.Job)
+            .Include(tc => tc.TestSetDay)
+                .ThenInclude(tsd => tsd.TestSet)
+                    .ThenInclude(ts => ts.Placement)
+                        .ThenInclude(p => p.Pour)
+                            .ThenInclude(pour => pour.Bed)
             .AsSplitQuery()  // Prevents cartesian explosion with multiple includes
             .OrderBy(tc => tc.TestCylinderId)
             .ToListAsync();
@@ -59,7 +64,8 @@ public class TestCylinderRepository : ITestCylinderRepository
             .Include(ts => ts.Placement)
                 .ThenInclude(p => p.Pour)
                     .ThenInclude(pour => pour.Bed)
-            .Include(ts => ts.TestCylinders)
+            .Include(ts => ts.TestSetDays)
+                .ThenInclude(tsd => tsd.TestCylinders)
             .AsSplitQuery()  // Prevents cartesian explosion with multiple includes
             .ToListAsync();
 
@@ -70,13 +76,5 @@ public class TestCylinderRepository : ITestCylinderRepository
             .ThenBy(ts => ts.Placement.StartTime)
             .ThenBy(ts => ts.Placement.OvenId)
             .ToList();
-    }
-
-    public async Task<IEnumerable<TestCylinder>> GetTestCylindersByTestSetIdsAsync(IEnumerable<int> testSetIds)
-    {
-        return await _context.TestCylinders
-            .Where(tc => testSetIds.Contains(tc.TestSetId))
-            .OrderBy(tc => tc.TestCylinderId)
-            .ToListAsync();
     }
 }

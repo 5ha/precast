@@ -21,7 +21,8 @@ public static class TestDataSeeder
         var pourCache = new Dictionary<string, Pour>(); // Key: "PourId"
         var mixBatchCache = new Dictionary<int, MixBatch>();
         var placementCache = new Dictionary<string, Placement>(); // Key: complex combination
-        var testSetCache = new Dictionary<string, TestSet>(); // Key: "PlacementId_TestType"
+        var testSetCache = new Dictionary<int, TestSet>(); // Key: PlacementId
+        var testSetDayCache = new Dictionary<string, TestSetDay>(); // Key: "TestSetId_DayNum"
 
         foreach (var line in dataLines)
         {
@@ -242,27 +243,45 @@ public static class TestDataSeeder
                 }
             }
 
-            // Get or create TestSet (one per Placement + TestType combination)
-            var testSetKey = $"{placement.PlacementId}_{testType}";
-            if (!testSetCache.TryGetValue(testSetKey, out var testSet))
+            // Get or create TestSet (one per Placement)
+            if (!testSetCache.TryGetValue(placement.PlacementId, out var testSet))
             {
                 testSet = context.TestSets.FirstOrDefault(ts =>
-                    ts.PlacementId == placement.PlacementId &&
-                    ts.TestType == testType);
+                    ts.PlacementId == placement.PlacementId);
 
                 if (testSet == null)
                 {
                     testSet = new TestSet
                     {
-                        PlacementId = placement.PlacementId,
-                        TestType = testType,
-                        TestingDate = testingDate,
-                        Comments = string.IsNullOrWhiteSpace(comments) ? null : comments
+                        PlacementId = placement.PlacementId
                     };
                     context.TestSets.Add(testSet);
                     await context.SaveChangesAsync();
                 }
-                testSetCache[testSetKey] = testSet;
+                testSetCache[placement.PlacementId] = testSet;
+            }
+
+            // Get or create TestSetDay (one per TestSet + DayNum combination)
+            var testSetDayKey = $"{testSet.TestSetId}_{testType}";
+            if (!testSetDayCache.TryGetValue(testSetDayKey, out var testSetDay))
+            {
+                testSetDay = context.TestSetDays.FirstOrDefault(tsd =>
+                    tsd.TestSetId == testSet.TestSetId &&
+                    tsd.DayNum == testType);
+
+                if (testSetDay == null)
+                {
+                    testSetDay = new TestSetDay
+                    {
+                        TestSetId = testSet.TestSetId,
+                        DayNum = testType,
+                        IsComplete = false,
+                        Comments = string.IsNullOrWhiteSpace(comments) ? null : comments
+                    };
+                    context.TestSetDays.Add(testSetDay);
+                    await context.SaveChangesAsync();
+                }
+                testSetDayCache[testSetDayKey] = testSetDay;
             }
 
             // Create TestCylinder records for each break value
@@ -271,10 +290,8 @@ public static class TestDataSeeder
             {
                 var cylinder = new TestCylinder
                 {
-                    TestSetId = testSet.TestSetId,
-                    TestType = testType,
-                    TestingDate = testingDate,
-                    Comments = string.IsNullOrWhiteSpace(comments) ? null : comments,
+                    TestSetDayId = testSetDay.TestSetDayId,
+                    DateTested = testingDate,
                     BreakPsi = breakPsi!.Value
                 };
                 context.TestCylinders.Add(cylinder);

@@ -24,10 +24,4 @@ public class TestCylinderService : BaseService<TestCylinderService>, ITestCylind
         _logger.LogInformation("Retrieving all test sets with related data");
         return await _repository.GetAllTestSetsWithRelatedDataAsync();
     }
-
-    public async Task<IEnumerable<TestCylinder>> GetTestCylindersByTestSetIdsAsync(IEnumerable<int> testSetIds)
-    {
-        _logger.LogInformation("Retrieving test cylinders for {Count} test sets", testSetIds.Count());
-        return await _repository.GetTestCylindersByTestSetIdsAsync(testSetIds);
-    }
 }

@@ -26,14 +26,8 @@ public class ConcreteReportBusiness : BaseBusiness<ConcreteReportBusiness>, ICon
         {
             _logger.LogInformation("Generating concrete report");
 
-            // Get all test sets with related data, already ordered by production date, start time, oven id, and test type
+            // Get all test sets with related data
             var testSets = (await _service.GetAllTestSetsWithRelatedDataAsync()).ToList();
-
-            // Get all test cylinders for these test sets
-            var testSetIds = testSets.Select(ts => ts.TestSetId).ToList();
-            var testCylinders = (await _service.GetTestCylindersByTestSetIdsAsync(testSetIds))
-                .GroupBy(tc => tc.TestSetId)
-                .ToDictionary(g => g.Key, g => g.ToList());
 
             var reportData = new List<ConcreteReportResponse>();
 
@@ -42,12 +36,16 @@ public class ConcreteReportBusiness : BaseBusiness<ConcreteReportBusiness>, ICon
             var mixBatchPlacementIndexes = new Dictionary<(int MixBatchId, int PlacementId), int>();
 
             // Build the placement index mapping for 1-day tests
-            var oneDayTestSets = testSets.Where(ts => ts.TestType == 1).ToList();
+            // Flatten all TestSetDays from all TestSets where DayNum == 1
+            var oneDayTestSetDays = testSets
+                .SelectMany(ts => ts.TestSetDays.Where(tsd => tsd.DayNum == 1)
+                    .Select(tsd => new { TestSet = ts, TestSetDay = tsd }))
+                .ToList();
 
-            foreach (var group in oneDayTestSets.GroupBy(ts => ts.Placement.MixBatchId))
+            foreach (var group in oneDayTestSetDays.GroupBy(x => x.TestSet.Placement.MixBatchId))
             {
                 var orderedPlacements = group
-                    .Select(ts => ts.Placement)
+                    .Select(x => x.TestSet.Placement)
                     .DistinctBy(p => p.PlacementId)
                     .OrderBy(p => p.StartTime)
                     .ThenBy(p => p.OvenId)
@@ -59,22 +57,34 @@ public class ConcreteReportBusiness : BaseBusiness<ConcreteReportBusiness>, ICon
                 }
             }
 
-            // Generate report lines - one line per test set (grouping cylinders into Break #1, Break #2, Break #3)
-            foreach (var testSet in testSets)
+            // Generate report lines - one line per TestSetDay (grouping cylinders into Break #1, Break #2, Break #3)
+            // Flatten TestSets to TestSetDays
+            // Ordering: batch-level tests (7, 28-day) come before placement-level tests (1-day)
+            var allTestSetDays = testSets
+                .SelectMany(ts => ts.TestSetDays.Select(tsd => new { TestSet = ts, TestSetDay = tsd }))
+                .OrderBy(x => x.TestSet.Placement.MixBatch.ProductionDay.Date)
+                .ThenBy(x => x.TestSet.Placement.MixBatch.MixBatchId)
+                .ThenBy(x => x.TestSetDay.DayNum == 1) // false (7/28-day) before true (1-day)
+                .ThenBy(x => x.TestSet.Placement.StartTime)
+                .ThenBy(x => x.TestSet.Placement.OvenId)
+                .ThenBy(x => x.TestSetDay.DayNum)
+                .ToList();
+
+            foreach (var item in allTestSetDays)
             {
+                var testSet = item.TestSet;
+                var testSetDay = item.TestSetDay;
                 var placement = testSet.Placement;
                 var mixBatch = placement.MixBatch;
                 var pour = placement.Pour;
                 var productionDay = mixBatch.ProductionDay;
 
-                // Get test cylinders for this test set
-                var cylinders = testCylinders.ContainsKey(testSet.TestSetId)
-                    ? testCylinders[testSet.TestSetId]
-                    : new List<TestCylinder>();
+                // Get test cylinders for this test set day
+                var cylinders = testSetDay.TestCylinders.ToList();
 
                 // Calculate TestId with optional suffix for 1-day tests
                 string testId;
-                if (testSet.TestType == 1)
+                if (testSetDay.DayNum == 1)
                 {
                     // For 1-day tests, add suffix based on placement order within the mix batch
                     var key = (mixBatch.MixBatchId, placement.PlacementId);
@@ -93,17 +103,17 @@ public class ConcreteReportBusiness : BaseBusiness<ConcreteReportBusiness>, ICon
                     testId = mixBatch.MixBatchId.ToString();
                 }
 
-                // Get the required PSI from MixDesignRequirements based on test type
+                // Get the required PSI from MixDesignRequirements based on day num
                 var requiredPsi = mixBatch.MixDesign.MixDesignRequirements
-                    .FirstOrDefault(r => r.TestType == testSet.TestType)?.RequiredPsi ?? 0;
+                    .FirstOrDefault(r => r.TestType == testSetDay.DayNum)?.RequiredPsi ?? 0;
 
                 // Get truck numbers from deliveries - sort numerically if possible
                 var truckNumbers = string.Join(", ", placement.Deliveries.Select(d => d.TruckId)
                     .OrderBy(t => int.TryParse(t, out var num) ? num : int.MaxValue)
                     .ThenBy(t => t));
 
-                // Convert TestType to Cylinder ID format (1 -> "1C", 7 -> "7C", 28 -> "28C")
-                var cylinderId = $"{testSet.TestType}C";
+                // Convert DayNum to Cylinder ID format (1 -> "1C", 7 -> "7C", 28 -> "28C")
+                var cylinderId = $"{testSetDay.DayNum}C";
 
                 // Format StartTime as time only (h:mm)
                 var startTimeStr = placement.StartTime.ToString(@"h\:mm");
@@ -119,9 +129,33 @@ public class ConcreteReportBusiness : BaseBusiness<ConcreteReportBusiness>, ICon
                     ? Math.Round(cylindersWithBreaks.Average(c => c.BreakPsi!.Value), MidpointRounding.AwayFromZero).ToString()
                     : string.Empty;
 
-                // Use TestSet's testing date and comments
-                var testingDate = testSet.TestingDate;
-                var comments = testSet.Comments ?? string.Empty;
+                // Use actual DateTested from cylinders if available
+                var testingDate = cylinders.FirstOrDefault(c => c.DateTested.HasValue)?.DateTested;
+                var comments = testSetDay.Comments ?? string.Empty;
+
+                // Calculate Age of Test and Testing Date
+                string ageOfTest;
+                string testingDateStr;
+
+                if (testingDate.HasValue)
+                {
+                    // Cylinders have been tested - use actual values
+                    ageOfTest = _ageCalculatorService.CalculateAgeOfTest(productionDay.Date, placement.StartTime, testingDate.Value);
+                    testingDateStr = FormatTestingDate(testingDate);
+                }
+                else if (testSetDay.DayNum == 1)
+                {
+                    // 1-day tests not yet tested - leave fields empty
+                    ageOfTest = string.Empty;
+                    testingDateStr = string.Empty;
+                }
+                else
+                {
+                    // 7-day and 28-day tests not yet tested - show scheduled date
+                    ageOfTest = testSetDay.DayNum.ToString();
+                    var scheduledDate = productionDay.Date.AddDays(testSetDay.DayNum);
+                    testingDateStr = FormatTestingDate(scheduledDate);
+                }
 
                 reportData.Add(new ConcreteReportResponse
                 {
@@ -138,8 +172,8 @@ public class ConcreteReportBusiness : BaseBusiness<ConcreteReportBusiness>, ICon
                     PourId = pour.PourId.ToString(),
                     PieceType = placement.PieceType,
                     OvenId = placement.OvenId ?? string.Empty,
-                    AgeOfTest = _ageCalculatorService.CalculateAgeOfTest(productionDay.Date, placement.StartTime, testingDate),
-                    TestingDate = FormatTestingDate(testingDate),
+                    AgeOfTest = ageOfTest,
+                    TestingDate = testingDateStr,
                     Required = requiredPsi.ToString(),
                     Break1 = break1,
                     Break2 = break2,

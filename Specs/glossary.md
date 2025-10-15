@@ -211,68 +211,91 @@ Tracking which trucks delivered which batches provides traceability for quality 
 ---
 
 ### TestSet
-**Definition:** A group of test cylinders prepared for testing at a specific age (1, 7, or 28 days). All TestSets are associated with a specific Placement.
+**Definition:** A container for all test cylinders related to a specific Placement. Each Placement has one TestSet which contains TestSetDays for different test ages (1, 7, and 28 days).
 
 **Properties:**
 - **TestSetId**: Unique identifier
 - **PlacementId**: Which placement this test set is for (required)
-- **TestType**: Age of test (1, 7, or 28 days)
-- **TestingDate**: When the cylinders are/were crushed
-- **Comments**: Any notes about the test set
 
 **Calculated Properties:**
-- **AgeOfTest**: Calculated as TestingDate minus Placement.StartTime
-- **AveragePsi**: Calculated from the average of all ConcreteTest.BreakPsi values in this TestSet
 - **MixBatchId**: Retrieved via Placement.MixBatchId (not stored directly)
-- **RequiredPsi**: Retrieved via Placement → MixBatch → MixDesign → MixDesignRequirement (where TestType matches)
 
 **Real-world context:**
-For Placement #456 (MixBatch #12345, Mix 2509.1, StartTime 13:15 on ProductionDay 09/10/2025):
-- TestSet #1: PlacementId 456, TestType 7, TestingDate 09/17/2025
-- TestSet #2: PlacementId 456, TestType 28, TestingDate 10/08/2025
-- TestSet #3: PlacementId 456, TestType 1, TestingDate 09/11/2025
-- RequiredPsi values come from MixDesignRequirements for Mix 2509.1
-
-For Placement #457 (MixBatch #12346, Mix 622.1, StartTime 17:00 on ProductionDay 09/10/2025):
-- TestSet #4: PlacementId 457, TestType 7, TestingDate 09/17/2025
-- TestSet #5: PlacementId 457, TestType 28, TestingDate 10/08/2025
-- TestSet #6: PlacementId 457, TestType 1, TestingDate 09/11/2025
-- RequiredPsi values come from MixDesignRequirements for Mix 622.1
-
-**Why TestSets matter:**
-- 7-day and 28-day tests verify the MixBatch meets design specifications (can query by MixBatchId via Placement)
-- 1-day tests allow quick release of specific pieces from that Placement
-- Multiple test cylinders per TestSet ensure reliability
+Each Placement will have a single TestSet that organizes all the testing requirements for that placement. The TestSet contains multiple TestSetDays, one for each required test age (1, 7, and 28 days).
 
 **Relationships:**
 - A TestSet belongs to one Placement (required)
-- A TestSet contains multiple ConcreteTests (individual cylinder breaks)
+- A TestSet contains multiple TestSetDays (one for each test age)
 - A TestSet's MixBatch can be found via Placement.MixBatchId
 
 ---
 
-### ConcreteTest
+### TestSetDay
+**Definition:** Represents testing scheduled for a specific age (1, 7, or 28 days) within a TestSet. Contains the test cylinders that will be crushed at that age.
+
+**Properties:**
+- **TestSetDayId**: Unique identifier
+- **TestSetId**: Which TestSet this belongs to
+- **DayNum**: Age of test (1, 7, or 28 days)
+- **IsComplete**: Marks when all cylinders for this day are tested in UI
+- **Comments**: Any notes about this test day
+
+**Calculated Properties:**
+- **TestingDate**: Calculated as Placement.ProductionDay.Date + DayNum
+- **AgeOfTest**: Calculated as TestingDate minus Placement.StartTime (when tests are actually performed)
+- **AveragePsi**: Calculated from the average of all TestCylinder.BreakPsi values in this TestSetDay
+- **RequiredPsi**: Retrieved via Placement → MixBatch → MixDesign → MixDesignRequirement (where TestType matches DayNum)
+
+**Real-world context:**
+For Placement #456 (MixBatch #12345, Mix 2509.1, StartTime 13:15 on ProductionDay 09/10/2025):
+- TestSet #1 contains:
+  - TestSetDay #1: DayNum 1, TestingDate 09/11/2025 (calculated)
+  - TestSetDay #2: DayNum 7, TestingDate 09/17/2025 (calculated)
+  - TestSetDay #3: DayNum 28, TestingDate 10/08/2025 (calculated)
+- RequiredPsi values come from MixDesignRequirements for Mix 2509.1
+
+For Placement #457 (MixBatch #12346, Mix 622.1, StartTime 17:00 on ProductionDay 09/10/2025):
+- TestSet #2 contains:
+  - TestSetDay #4: DayNum 1, TestingDate 09/11/2025 (calculated)
+  - TestSetDay #5: DayNum 7, TestingDate 09/17/2025 (calculated)
+  - TestSetDay #6: DayNum 28, TestingDate 10/08/2025 (calculated)
+- RequiredPsi values come from MixDesignRequirements for Mix 622.1
+
+**Why TestSetDays matter:**
+- 7-day and 28-day tests verify the MixBatch meets design specifications (can query by MixBatchId via Placement)
+- 1-day tests allow quick release of specific pieces from that Placement
+- Multiple test cylinders per TestSetDay ensure reliability
+- IsComplete flag allows UI to track which test days have been completed
+
+**Relationships:**
+- A TestSetDay belongs to one TestSet (required)
+- A TestSetDay contains multiple TestCylinders (individual cylinder breaks)
+
+---
+
+### TestCylinder
 **Definition:** An individual compression test result from crushing one test cylinder.
 
 **Properties:**
-- **ConcreteTestId**: Unique identifier
-- **TestSetId**: Which test set this belongs to
-- **BreakPsi**: The compression strength result (PSI)
+- **TestCylinderId**: Unique identifier
+- **TestSetDayId**: Which test set day this belongs to
+- **DateTested**: The date we actually ran the test (nullable)
+- **BreakPsi**: The compression strength result (PSI) - nullable until tested
 
 **Real-world context:**
-TestSet #1 (7-day test for MixBatch #12345) has three test cylinders crushed:
-- ConcreteTest #1: BreakPsi 6463
-- ConcreteTest #2: BreakPsi 6427
-- ConcreteTest #3: BreakPsi 6445
+TestSetDay #2 (7-day test, DayNum 7, for Placement 456 / MixBatch #12345) has three test cylinders crushed:
+- TestCylinder #1: DateTested 09/17/2025, BreakPsi 6463
+- TestCylinder #2: DateTested 09/17/2025, BreakPsi 6427
+- TestCylinder #3: DateTested 09/17/2025, BreakPsi 6445
 
-Average PSI for the TestSet = 6445 PSI
+Average PSI for the TestSetDay = 6445 PSI
 
 **Why multiple breaks matter:**
 Multiple test cylinders from the same batch ensure test reliability. If one cylinder was damaged or improperly cured, the other results provide verification.
 
 **Relationships:**
-- A ConcreteTest belongs to one TestSet
-- Multiple ConcreteTests combine to determine if a TestSet passes or fails
+- A TestCylinder belongs to one TestSetDay
+- Multiple TestCylinders combine to determine if a TestSetDay passes or fails
 
 ---
 
@@ -307,31 +330,33 @@ Multiple test cylinders from the same batch ensure test reliability. If one cyli
    - Mix 2509.1 Requirements: 1-day: 3500 PSI, 7-day: 6000 PSI, 28-day: 6000 PSI
    - Mix 622.1 Requirements: 1-day: 3500 PSI, 7-day: 5000 PSI, 28-day: 5000 PSI
 
-8. **TestSets Created:**
-   - TestSet #101: PlacementId 456, TestType 7, TestingDate 09/17/2025
-   - TestSet #102: PlacementId 456, TestType 28, TestingDate 10/08/2025
-   - TestSet #103: PlacementId 456, TestType 1, TestingDate 09/11/2025
-   - TestSet #104: PlacementId 457, TestType 7, TestingDate 09/17/2025
-   - TestSet #105: PlacementId 457, TestType 28, TestingDate 10/08/2025
-   - TestSet #106: PlacementId 457, TestType 1, TestingDate 09/11/2025
+8. **TestSets and TestSetDays Created:**
+   - TestSet #1: PlacementId 456
+     - TestSetDay #101: DayNum 1, IsComplete false, TestingDate 09/11/2025 (calculated)
+     - TestSetDay #102: DayNum 7, IsComplete false, TestingDate 09/17/2025 (calculated)
+     - TestSetDay #103: DayNum 28, IsComplete false, TestingDate 10/08/2025 (calculated)
+   - TestSet #2: PlacementId 457
+     - TestSetDay #104: DayNum 1, IsComplete false, TestingDate 09/11/2025 (calculated)
+     - TestSetDay #105: DayNum 7, IsComplete false, TestingDate 09/17/2025 (calculated)
+     - TestSetDay #106: DayNum 28, IsComplete false, TestingDate 10/08/2025 (calculated)
 
 9. **Testing Results:**
-   - TestSet #101 (7-day, Placement 456, Mix 2509.1):
-     - ConcreteTest #1: BreakPsi 6463
-     - ConcreteTest #2: BreakPsi 6427
+   - TestSetDay #102 (7-day, Placement 456, Mix 2509.1):
+     - TestCylinder #1: DateTested 09/17/2025, BreakPsi 6463
+     - TestCylinder #2: DateTested 09/17/2025, BreakPsi 6427
      - Average: 6445 PSI → PASS (required 6000 per MixDesignRequirement)
 
-   - TestSet #103 (1-day, Placement 456, Mix 2509.1):
-     - ConcreteTest #3: BreakPsi 3580
-     - ConcreteTest #4: BreakPsi 3503
+   - TestSetDay #101 (1-day, Placement 456, Mix 2509.1):
+     - TestCylinder #3: DateTested 09/11/2025, BreakPsi 3580
+     - TestCylinder #4: DateTested 09/11/2025, BreakPsi 3503
      - Average: 3542 PSI → PASS (required 3500 per MixDesignRequirement)
 
-   - TestSet #106 (1-day, Placement 457, Mix 622.1):
-     - ConcreteTest #5: BreakPsi 4419
-     - ConcreteTest #6: BreakPsi 4305
+   - TestSetDay #104 (1-day, Placement 457, Mix 622.1):
+     - TestCylinder #5: DateTested 09/11/2025, BreakPsi 4419
+     - TestCylinder #6: DateTested 09/11/2025, BreakPsi 4305
      - Average: 4362 PSI → PASS (required 3500 per MixDesignRequirement)
 
-**Result:** Pour 6539 has 2 Placements using 2 MixBatches, delivered by 6 trucks, with 6 TestSets ensuring quality control for all concrete used that day.
+**Result:** Pour 6539 has 2 Placements using 2 MixBatches, delivered by 6 trucks, with 2 TestSets (6 TestSetDays) ensuring quality control for all concrete used that day.
 
 ---
 
@@ -350,7 +375,8 @@ MixBatch (1) ──< (M) Delivery
 MixBatch (1) ──< (M) Placement
 Placement (1) ──< (M) TestSet
 
-TestSet (1) ──< (M) ConcreteTest
+TestSet (1) ──< (M) TestSetDay
+TestSetDay (1) ──< (M) TestCylinder
 ```
 
 **Key Insight:** The hierarchy ensures complete traceability and data integrity:
@@ -360,16 +386,18 @@ TestSet (1) ──< (M) ConcreteTest
 - **Simplified Model**: No composite foreign keys needed - all relationships use simple foreign keys
 
 **Traceability:**
-- From a **ConcreteTest** result → **TestSet** → **Placement** → **MixBatch** → **MixDesign** (what recipe was used)
-- From a **TestSet** → **Placement** → **MixBatch** → **ProductionDay** (when it happened)
-- From a **TestSet** → **Placement** → **Pour** → **Job** (which project)
+- From a **TestCylinder** result → **TestSetDay** → **TestSet** → **Placement** → **MixBatch** → **MixDesign** (what recipe was used)
+- From a **TestSetDay** → **TestSet** → **Placement** → **MixBatch** → **ProductionDay** (when it happened)
+- From a **TestSetDay** → **TestSet** → **Placement** → **Pour** → **Job** (which project)
 - From a **MixBatch** → **Delivery** records (which trucks delivered)
-- From a **TestSet** → **MixDesign** → **MixDesignRequirement** (required strength criteria)
+- From a **TestSetDay** → **TestSet** → **Placement** → **MixBatch** → **MixDesign** → **MixDesignRequirement** (required strength criteria)
 
 This allows answering critical questions like:
-- "Which job used the concrete that failed testing?" - Follow TestSet → Placement → Pour → Job
-- "Which trucks delivered the batch that passed with 6445 PSI?" - Follow TestSet → Placement → MixBatch → Delivery
-- "Can we release the pieces from Placement #456 based on the 1-day test results?" - Query TestSet where PlacementId = 456 and TestType = 1, compare AveragePsi to MixDesignRequirement.RequiredPsi
-- "What were all the test results for MixBatch #12345?" - Query TestSet where Placement.MixBatchId = 12345
-- "What strength is required for this test?" - Follow TestSet → Placement → MixBatch → MixDesign → MixDesignRequirement (where TestType matches)
+- "Which job used the concrete that failed testing?" - Follow TestSetDay → TestSet → Placement → Pour → Job
+- "Which trucks delivered the batch that passed with 6445 PSI?" - Follow TestSetDay → TestSet → Placement → MixBatch → Delivery
+- "Can we release the pieces from Placement #456 based on the 1-day test results?" - Query TestSetDay where TestSet.PlacementId = 456 and DayNum = 1, compare AveragePsi to MixDesignRequirement.RequiredPsi
+- "What were all the test results for MixBatch #12345?" - Query TestSetDay where TestSet.Placement.MixBatchId = 12345
+- "What strength is required for this test?" - Follow TestSetDay → TestSet → Placement → MixBatch → MixDesign → MixDesignRequirement (where TestType matches DayNum)
+- "Which test days are scheduled for today?" - Query TestSetDay where Placement.ProductionDay.Date + DayNum = Today
+- "Which test days are complete?" - Query TestSetDay where IsComplete = true
 - "Which days did Pour 6539 span?" - Query SELECT DISTINCT ProductionDayId FROM Placement JOIN MixBatch WHERE PourId = 6539

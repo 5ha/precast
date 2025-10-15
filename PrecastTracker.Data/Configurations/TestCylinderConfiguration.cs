@@ -10,15 +10,9 @@ public class TestCylinderConfiguration : IEntityTypeConfiguration<TestCylinder>
     {
         builder.HasKey(tc => tc.TestCylinderId);
 
-        builder.Property(tc => tc.TestType)
-            .IsRequired();
-
-        builder.Property(tc => tc.Comments)
-            .HasMaxLength(500);
-
-        builder.HasOne(tc => tc.TestSet)
-            .WithMany(ts => ts.TestCylinders)
-            .HasForeignKey(tc => tc.TestSetId)
+        builder.HasOne(tc => tc.TestSetDay)
+            .WithMany(tsd => tsd.TestCylinders)
+            .HasForeignKey(tc => tc.TestSetDayId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }
