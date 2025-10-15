@@ -3,6 +3,7 @@ namespace PrecastTracker.Data.Entities;
 public class TestCylinder
 {
     public int TestCylinderId { get; set; }
+    public string Code { get; set; } = string.Empty; // What was written on the cylinder (e.g., "12345-7-25-020")
     public DateTime? DateTested { get; set; } // The date we actually ran the test
     public int? BreakPsi { get; set; } // Compression strength result (PSI) - nullable until tested
 

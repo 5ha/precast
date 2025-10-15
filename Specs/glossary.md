@@ -278,6 +278,7 @@ For Placement #457 (MixBatch #12346, Mix 622.1, StartTime 17:00 on ProductionDay
 
 **Properties:**
 - **TestCylinderId**: Unique identifier
+- **Code**: What was written on the physical cylinder for identification (e.g., "12345-7-25-020"). Default format (implemented in UI): `[MixBatchId]-[DayNo]-[JobCode]`
 - **TestSetDayId**: Which test set day this belongs to
 - **DateTested**: The date we actually ran the test (nullable)
 - **BreakPsi**: The compression strength result (PSI) - nullable until tested

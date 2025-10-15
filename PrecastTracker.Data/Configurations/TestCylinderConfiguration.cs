@@ -10,6 +10,10 @@ public class TestCylinderConfiguration : IEntityTypeConfiguration<TestCylinder>
     {
         builder.HasKey(tc => tc.TestCylinderId);
 
+        builder.Property(tc => tc.Code)
+            .IsRequired()
+            .HasMaxLength(100);
+
         builder.HasOne(tc => tc.TestSetDay)
             .WithMany(tsd => tsd.TestCylinders)
             .HasForeignKey(tc => tc.TestSetDayId)
