@@ -27,9 +27,9 @@ public class ConcreteReportBusinessTests : IDisposable
 
         // Setup business layer dependencies
         var unitOfWork = new UnitOfWork(_context);
-        var repository = new ConcreteTestRepository(_context);
-        var loggerService = LoggerFactory.Create(builder => builder.AddConsole()).CreateLogger<ConcreteTestService>();
-        var service = new ConcreteTestService(repository, loggerService);
+        var repository = new TestCylinderRepository(_context);
+        var loggerService = LoggerFactory.Create(builder => builder.AddConsole()).CreateLogger<TestCylinderService>();
+        var service = new TestCylinderService(repository, loggerService);
         var loggerAgeCalculator = LoggerFactory.Create(builder => builder.AddConsole()).CreateLogger<AgeCalculatorService>();
         var ageCalculatorService = new AgeCalculatorService(loggerAgeCalculator);
         var loggerBusiness = LoggerFactory.Create(builder => builder.AddConsole()).CreateLogger<ConcreteReportBusiness>();

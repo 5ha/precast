@@ -24,7 +24,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Delivery> Deliveries { get; set; }
     public DbSet<Placement> Placements { get; set; }
     public DbSet<TestSet> TestSets { get; set; }
-    public DbSet<ConcreteTest> ConcreteTests { get; set; }
+    public DbSet<TestCylinder> TestCylinders { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -242,7 +242,7 @@ public static class TestDataSeeder
                 }
             }
 
-            // Get or create TestSet
+            // Get or create TestSet (one per Placement + TestType combination)
             var testSetKey = $"{placement.PlacementId}_{testType}";
             if (!testSetCache.TryGetValue(testSetKey, out var testSet))
             {
@@ -265,16 +265,19 @@ public static class TestDataSeeder
                 testSetCache[testSetKey] = testSet;
             }
 
-            // Create ConcreteTest records for each break value
+            // Create TestCylinder records for each break value
             var breaks = new[] { break1, break2, break3 }.Where(b => b.HasValue).ToList();
             foreach (var breakPsi in breaks)
             {
-                var test = new ConcreteTest
+                var cylinder = new TestCylinder
                 {
                     TestSetId = testSet.TestSetId,
+                    TestType = testType,
+                    TestingDate = testingDate,
+                    Comments = string.IsNullOrWhiteSpace(comments) ? null : comments,
                     BreakPsi = breakPsi!.Value
                 };
-                context.ConcreteTests.Add(test);
+                context.TestCylinders.Add(cylinder);
             }
         }
 

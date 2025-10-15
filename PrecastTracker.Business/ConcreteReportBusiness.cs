@@ -8,11 +8,11 @@ namespace PrecastTracker.Business;
 
 public class ConcreteReportBusiness : BaseBusiness<ConcreteReportBusiness>, IConcreteReportBusiness
 {
-    private readonly IConcreteTestService _service;
+    private readonly ITestCylinderService _service;
     private readonly IAgeCalculatorService _ageCalculatorService;
 
     public ConcreteReportBusiness(
-        IConcreteTestService service,
+        ITestCylinderService service,
         IAgeCalculatorService ageCalculatorService,
         ILogger<ConcreteReportBusiness> logger) : base(logger)
     {
@@ -29,10 +29,10 @@ public class ConcreteReportBusiness : BaseBusiness<ConcreteReportBusiness>, ICon
             // Get all test sets with related data, already ordered by production date, start time, oven id, and test type
             var testSets = (await _service.GetAllTestSetsWithRelatedDataAsync()).ToList();
 
-            // Get all concrete tests for these test sets
+            // Get all test cylinders for these test sets
             var testSetIds = testSets.Select(ts => ts.TestSetId).ToList();
-            var concreteTests = (await _service.GetConcreteTestsByTestSetIdsAsync(testSetIds))
-                .GroupBy(ct => ct.TestSetId)
+            var testCylinders = (await _service.GetTestCylindersByTestSetIdsAsync(testSetIds))
+                .GroupBy(tc => tc.TestSetId)
                 .ToDictionary(g => g.Key, g => g.ToList());
 
             var reportData = new List<ConcreteReportResponse>();
@@ -42,8 +42,9 @@ public class ConcreteReportBusiness : BaseBusiness<ConcreteReportBusiness>, ICon
             var mixBatchPlacementIndexes = new Dictionary<(int MixBatchId, int PlacementId), int>();
 
             // Build the placement index mapping for 1-day tests
-            var oneDayTests = testSets.Where(ts => ts.TestType == 1).ToList();
-            foreach (var group in oneDayTests.GroupBy(ts => ts.Placement.MixBatchId))
+            var oneDayTestSets = testSets.Where(ts => ts.TestType == 1).ToList();
+
+            foreach (var group in oneDayTestSets.GroupBy(ts => ts.Placement.MixBatchId))
             {
                 var orderedPlacements = group
                     .Select(ts => ts.Placement)
@@ -58,13 +59,18 @@ public class ConcreteReportBusiness : BaseBusiness<ConcreteReportBusiness>, ICon
                 }
             }
 
-            // Generate report lines
+            // Generate report lines - one line per test set (grouping cylinders into Break #1, Break #2, Break #3)
             foreach (var testSet in testSets)
             {
                 var placement = testSet.Placement;
                 var mixBatch = placement.MixBatch;
                 var pour = placement.Pour;
                 var productionDay = mixBatch.ProductionDay;
+
+                // Get test cylinders for this test set
+                var cylinders = testCylinders.ContainsKey(testSet.TestSetId)
+                    ? testCylinders[testSet.TestSetId]
+                    : new List<TestCylinder>();
 
                 // Calculate TestId with optional suffix for 1-day tests
                 string testId;
@@ -96,20 +102,26 @@ public class ConcreteReportBusiness : BaseBusiness<ConcreteReportBusiness>, ICon
                     .OrderBy(t => int.TryParse(t, out var num) ? num : int.MaxValue)
                     .ThenBy(t => t));
 
-                // Get breaks from concrete tests
-                var breaks = concreteTests.ContainsKey(testSet.TestSetId)
-                    ? concreteTests[testSet.TestSetId].Select(ct => ct.BreakPsi).ToList()
-                    : new List<int>();
-
-                var averagePsi = breaks.Count > 0
-                    ? ((int)Math.Round((double)breaks.Sum() / breaks.Count, MidpointRounding.AwayFromZero)).ToString()
-                    : string.Empty;
-
                 // Convert TestType to Cylinder ID format (1 -> "1C", 7 -> "7C", 28 -> "28C")
                 var cylinderId = $"{testSet.TestType}C";
 
                 // Format StartTime as time only (h:mm)
                 var startTimeStr = placement.StartTime.ToString(@"h\:mm");
+
+                // Get break PSI values for up to 3 cylinders
+                var break1 = cylinders.ElementAtOrDefault(0)?.BreakPsi?.ToString() ?? string.Empty;
+                var break2 = cylinders.ElementAtOrDefault(1)?.BreakPsi?.ToString() ?? string.Empty;
+                var break3 = cylinders.ElementAtOrDefault(2)?.BreakPsi?.ToString() ?? string.Empty;
+
+                // Calculate average PSI from all cylinders with non-null BreakPsi
+                var cylindersWithBreaks = cylinders.Where(c => c.BreakPsi.HasValue).ToList();
+                var averagePsi = cylindersWithBreaks.Any()
+                    ? Math.Round(cylindersWithBreaks.Average(c => c.BreakPsi!.Value), MidpointRounding.AwayFromZero).ToString()
+                    : string.Empty;
+
+                // Use TestSet's testing date and comments
+                var testingDate = testSet.TestingDate;
+                var comments = testSet.Comments ?? string.Empty;
 
                 reportData.Add(new ConcreteReportResponse
                 {
@@ -126,14 +138,14 @@ public class ConcreteReportBusiness : BaseBusiness<ConcreteReportBusiness>, ICon
                     PourId = pour.PourId.ToString(),
                     PieceType = placement.PieceType,
                     OvenId = placement.OvenId ?? string.Empty,
-                    AgeOfTest = _ageCalculatorService.CalculateAgeOfTest(productionDay.Date, placement.StartTime, testSet.TestingDate),
-                    TestingDate = FormatTestingDate(testSet.TestingDate),
+                    AgeOfTest = _ageCalculatorService.CalculateAgeOfTest(productionDay.Date, placement.StartTime, testingDate),
+                    TestingDate = FormatTestingDate(testingDate),
                     Required = requiredPsi.ToString(),
-                    Break1 = breaks.Count > 0 ? breaks[0].ToString() : string.Empty,
-                    Break2 = breaks.Count > 1 ? breaks[1].ToString() : string.Empty,
-                    Break3 = breaks.Count > 2 ? breaks[2].ToString() : string.Empty,
+                    Break1 = break1,
+                    Break2 = break2,
+                    Break3 = break3,
                     AveragePsi = averagePsi,
-                    Comments = testSet.Comments ?? string.Empty
+                    Comments = comments
                 });
             }
 

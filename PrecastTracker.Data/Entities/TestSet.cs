@@ -12,5 +12,5 @@ public class TestSet
 
     // Navigation property
     public Placement Placement { get; set; } = null!;
-    public ICollection<ConcreteTest> ConcreteTests { get; set; } = new List<ConcreteTest>();
+    public ICollection<TestCylinder> TestCylinders { get; set; } = new List<TestCylinder>();
 }

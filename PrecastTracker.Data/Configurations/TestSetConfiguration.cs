@@ -10,20 +10,14 @@ public class TestSetConfiguration : IEntityTypeConfiguration<TestSet>
     {
         builder.HasKey(ts => ts.TestSetId);
 
-        builder.Property(ts => ts.TestType)
-            .IsRequired();
-
-        builder.Property(ts => ts.Comments)
-            .HasMaxLength(500);
-
         builder.HasOne(ts => ts.Placement)
             .WithMany(p => p.TestSets)
             .HasForeignKey(ts => ts.PlacementId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasMany(ts => ts.ConcreteTests)
-            .WithOne(ct => ct.TestSet)
-            .HasForeignKey(ct => ct.TestSetId)
+        builder.HasMany(ts => ts.TestCylinders)
+            .WithOne(tc => tc.TestSet)
+            .HasForeignKey(tc => tc.TestSetId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

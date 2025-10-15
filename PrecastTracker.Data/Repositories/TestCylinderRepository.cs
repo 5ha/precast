@@ -3,40 +3,40 @@ using PrecastTracker.Data.Entities;
 
 namespace PrecastTracker.Data.Repositories;
 
-public class ConcreteTestRepository : IConcreteTestRepository
+public class TestCylinderRepository : ITestCylinderRepository
 {
     private readonly ApplicationDbContext _context;
 
-    public ConcreteTestRepository(ApplicationDbContext context)
+    public TestCylinderRepository(ApplicationDbContext context)
     {
         _context = context;
     }
 
-    public async Task<IEnumerable<ConcreteTest>> GetAllWithRelatedDataAsync()
+    public async Task<IEnumerable<TestCylinder>> GetAllWithRelatedDataAsync()
     {
-        return await _context.ConcreteTests
-            .Include(ct => ct.TestSet)
+        return await _context.TestCylinders
+            .Include(tc => tc.TestSet)
                 .ThenInclude(ts => ts.Placement)
                     .ThenInclude(p => p.MixBatch)
                         .ThenInclude(mb => mb.MixDesign)
                             .ThenInclude(md => md.MixDesignRequirements)
-            .Include(ct => ct.TestSet)
+            .Include(tc => tc.TestSet)
                 .ThenInclude(ts => ts.Placement)
                     .ThenInclude(p => p.MixBatch)
                         .ThenInclude(mb => mb.ProductionDay)
-            .Include(ct => ct.TestSet)
+            .Include(tc => tc.TestSet)
                 .ThenInclude(ts => ts.Placement)
                     .ThenInclude(p => p.Deliveries)
-            .Include(ct => ct.TestSet)
+            .Include(tc => tc.TestSet)
                 .ThenInclude(ts => ts.Placement)
                     .ThenInclude(p => p.Pour)
                         .ThenInclude(pour => pour.Job)
-            .Include(ct => ct.TestSet)
+            .Include(tc => tc.TestSet)
                 .ThenInclude(ts => ts.Placement)
                     .ThenInclude(p => p.Pour)
                         .ThenInclude(pour => pour.Bed)
             .AsSplitQuery()  // Prevents cartesian explosion with multiple includes
-            .OrderBy(ct => ct.ConcreteTestId)
+            .OrderBy(tc => tc.TestCylinderId)
             .ToListAsync();
     }
 
@@ -59,27 +59,24 @@ public class ConcreteTestRepository : IConcreteTestRepository
             .Include(ts => ts.Placement)
                 .ThenInclude(p => p.Pour)
                     .ThenInclude(pour => pour.Bed)
+            .Include(ts => ts.TestCylinders)
             .AsSplitQuery()  // Prevents cartesian explosion with multiple includes
             .ToListAsync();
 
         // Order in memory after loading all data
-        // Test type order: 7 (7-day), 28 (28-day), 1 (1-day)
-        var testTypeOrder = new Dictionary<int, int> { { 7, 0 }, { 28, 1 }, { 1, 2 } };
-
         return testSets
             .OrderBy(ts => ts.Placement.MixBatch.ProductionDay.Date)
             .ThenBy(ts => ts.Placement.MixBatch.MixBatchId)
-            .ThenBy(ts => testTypeOrder.GetValueOrDefault(ts.TestType, 99))
             .ThenBy(ts => ts.Placement.StartTime)
             .ThenBy(ts => ts.Placement.OvenId)
             .ToList();
     }
 
-    public async Task<IEnumerable<ConcreteTest>> GetConcreteTestsByTestSetIdsAsync(IEnumerable<int> testSetIds)
+    public async Task<IEnumerable<TestCylinder>> GetTestCylindersByTestSetIdsAsync(IEnumerable<int> testSetIds)
     {
-        return await _context.ConcreteTests
-            .Where(ct => testSetIds.Contains(ct.TestSetId))
-            .OrderBy(ct => ct.ConcreteTestId)
+        return await _context.TestCylinders
+            .Where(tc => testSetIds.Contains(tc.TestSetId))
+            .OrderBy(tc => tc.TestCylinderId)
             .ToListAsync();
     }
 }
