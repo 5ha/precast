@@ -28,6 +28,53 @@
           }
         }
       }
+    },
+    "/api/tester-report/tests-due-today": {
+      "get": {
+        "tags": [
+          "TesterReport"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/tester-report/tests-overdue": {
+      "get": {
+        "tags": [
+          "TesterReport"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/tester-report/tests-upcoming": {
+      "get": {
+        "tags": [
+          "TesterReport"
+        ],
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 7
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
     }
   },
   "components": { }

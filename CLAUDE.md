@@ -9,3 +9,6 @@
 - Includes in a repository is only for materialising entities. Don't use includes when projecting DTOs
 
 - When writing tests, add comments indicating what is being verified. It is hard to derive intent simply from long test names.
+
+- only use in memory db for repository tests. For all other layers use mocking
+
