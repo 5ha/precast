@@ -8,11 +8,11 @@ namespace PrecastTracker.Business;
 
 public class ConcreteReportBusiness : BaseBusiness<ConcreteReportBusiness>, IConcreteReportBusiness
 {
-    private readonly ITestCylinderService _service;
+    private readonly IConcreteReportService _service;
     private readonly IAgeCalculatorService _ageCalculatorService;
 
     public ConcreteReportBusiness(
-        ITestCylinderService service,
+        IConcreteReportService service,
         IAgeCalculatorService ageCalculatorService,
         ILogger<ConcreteReportBusiness> logger) : base(logger)
     {

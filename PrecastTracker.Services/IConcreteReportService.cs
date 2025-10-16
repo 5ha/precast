@@ -2,8 +2,7 @@ using PrecastTracker.Data.Entities;
 
 namespace PrecastTracker.Services;
 
-public interface ITestCylinderService : IService
+public interface IConcreteReportService : IService
 {
-    Task<IEnumerable<TestCylinder>> GetAllTestsWithRelatedDataAsync();
     Task<IEnumerable<TestSet>> GetAllTestSetsWithRelatedDataAsync();
 }
