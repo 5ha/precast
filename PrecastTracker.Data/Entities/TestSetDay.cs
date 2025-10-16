@@ -6,6 +6,8 @@ public class TestSetDay
     public int DayNum { get; set; } // 1, 7, or 28 days
     public bool IsComplete { get; set; } // Marks when all cylinders for this day are tested in UI
     public string? Comments { get; set; }
+    public DateTime DateDue { get; set; } // Scheduled testing date: ProductionDay.Date + DayNum
+    public DateTime? DateTested { get; set; } // The date we actually ran the test
 
     // Foreign key
     public int TestSetId { get; set; }

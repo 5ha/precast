@@ -57,6 +57,7 @@ public static class TestDataSeeder
 
             // Parse Cylinder ID to get TestType
             var testType = ParseTestType(cylinderId);
+            var dueDate = castingDate.AddDays(testType);
 
             // Get or create MixDesign
             if (!mixDesignCache.TryGetValue(mixDesignCode, out var mixDesign))
@@ -275,11 +276,18 @@ public static class TestDataSeeder
                     {
                         TestSetId = testSet.TestSetId,
                         DayNum = testType,
+                        DateDue = dueDate,
+                        DateTested = testingDate,
                         IsComplete = false,
                         Comments = string.IsNullOrWhiteSpace(comments) ? null : comments
                     };
                     context.TestSetDays.Add(testSetDay);
                     await context.SaveChangesAsync();
+                }
+                else
+                {
+                    testSetDay.DateDue = dueDate;
+                    testSetDay.DateTested = testingDate;
                 }
                 testSetDayCache[testSetDayKey] = testSetDay;
             }
@@ -291,7 +299,6 @@ public static class TestDataSeeder
                 var cylinder = new TestCylinder
                 {
                     TestSetDayId = testSetDay.TestSetDayId,
-                    DateTested = testingDate,
                     BreakPsi = breakPsi!.Value
                 };
                 context.TestCylinders.Add(cylinder);

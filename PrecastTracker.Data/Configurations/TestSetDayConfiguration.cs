@@ -17,6 +17,9 @@ public class TestSetDayConfiguration : IEntityTypeConfiguration<TestSetDay>
             .IsRequired()
             .HasDefaultValue(false);
 
+        builder.Property(tsd => tsd.DateDue)
+            .IsRequired();
+
         builder.Property(tsd => tsd.Comments)
             .HasMaxLength(500);
 

@@ -237,28 +237,28 @@ Each Placement will have a single TestSet that organizes all the testing require
 - **TestSetDayId**: Unique identifier
 - **TestSetId**: Which TestSet this belongs to
 - **DayNum**: Age of test (1, 7, or 28 days)
+- **DateDue**: Scheduled testing date set by the application when the TestSetDay is created (`ProductionDay.Date + DayNo`). The code must always populate this during creation so the due date persists even before any cylinders are tested.
 - **IsComplete**: Marks when all cylinders for this day are tested in UI
 - **Comments**: Any notes about this test day
 
 **Calculated Properties:**
-- **TestingDate**: Calculated as Placement.ProductionDay.Date + DayNum
-- **AgeOfTest**: Calculated as TestingDate minus Placement.StartTime (when tests are actually performed)
+- **AgeOfTest**: Calculated as the actual test execution date (or DateDue when future) minus Placement.StartTime
 - **AveragePsi**: Calculated from the average of all TestCylinder.BreakPsi values in this TestSetDay
 - **RequiredPsi**: Retrieved via Placement → MixBatch → MixDesign → MixDesignRequirement (where TestType matches DayNum)
 
 **Real-world context:**
 For Placement #456 (MixBatch #12345, Mix 2509.1, StartTime 13:15 on ProductionDay 09/10/2025):
 - TestSet #1 contains:
-  - TestSetDay #1: DayNum 1, TestingDate 09/11/2025 (calculated)
-  - TestSetDay #2: DayNum 7, TestingDate 09/17/2025 (calculated)
-  - TestSetDay #3: DayNum 28, TestingDate 10/08/2025 (calculated)
+  - TestSetDay #1: DayNum 1, DateDue 09/11/2025 (ProductionDay.Date + 1)
+  - TestSetDay #2: DayNum 7, DateDue 09/17/2025 (ProductionDay.Date + 7)
+  - TestSetDay #3: DayNum 28, DateDue 10/08/2025 (ProductionDay.Date + 28)
 - RequiredPsi values come from MixDesignRequirements for Mix 2509.1
 
 For Placement #457 (MixBatch #12346, Mix 622.1, StartTime 17:00 on ProductionDay 09/10/2025):
 - TestSet #2 contains:
-  - TestSetDay #4: DayNum 1, TestingDate 09/11/2025 (calculated)
-  - TestSetDay #5: DayNum 7, TestingDate 09/17/2025 (calculated)
-  - TestSetDay #6: DayNum 28, TestingDate 10/08/2025 (calculated)
+  - TestSetDay #4: DayNum 1, DateDue 09/11/2025 (ProductionDay.Date + 1)
+  - TestSetDay #5: DayNum 7, DateDue 09/17/2025 (ProductionDay.Date + 7)
+  - TestSetDay #6: DayNum 28, DateDue 10/08/2025 (ProductionDay.Date + 28)
 - RequiredPsi values come from MixDesignRequirements for Mix 622.1
 
 **Why TestSetDays matter:**
@@ -333,13 +333,13 @@ Multiple test cylinders from the same batch ensure test reliability. If one cyli
 
 8. **TestSets and TestSetDays Created:**
    - TestSet #1: PlacementId 456
-     - TestSetDay #101: DayNum 1, IsComplete false, TestingDate 09/11/2025 (calculated)
-     - TestSetDay #102: DayNum 7, IsComplete false, TestingDate 09/17/2025 (calculated)
-     - TestSetDay #103: DayNum 28, IsComplete false, TestingDate 10/08/2025 (calculated)
+     - TestSetDay #101: DayNum 1, IsComplete false, DateDue 09/11/2025 (ProductionDay.Date + 1)
+     - TestSetDay #102: DayNum 7, IsComplete false, DateDue 09/17/2025 (ProductionDay.Date + 7)
+     - TestSetDay #103: DayNum 28, IsComplete false, DateDue 10/08/2025 (ProductionDay.Date + 28)
    - TestSet #2: PlacementId 457
-     - TestSetDay #104: DayNum 1, IsComplete false, TestingDate 09/11/2025 (calculated)
-     - TestSetDay #105: DayNum 7, IsComplete false, TestingDate 09/17/2025 (calculated)
-     - TestSetDay #106: DayNum 28, IsComplete false, TestingDate 10/08/2025 (calculated)
+     - TestSetDay #104: DayNum 1, IsComplete false, DateDue 09/11/2025 (ProductionDay.Date + 1)
+     - TestSetDay #105: DayNum 7, IsComplete false, DateDue 09/17/2025 (ProductionDay.Date + 7)
+     - TestSetDay #106: DayNum 28, IsComplete false, DateDue 10/08/2025 (ProductionDay.Date + 28)
 
 9. **Testing Results:**
    - TestSetDay #102 (7-day, Placement 456, Mix 2509.1):

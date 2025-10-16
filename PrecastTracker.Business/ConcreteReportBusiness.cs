@@ -129,8 +129,8 @@ public class ConcreteReportBusiness : BaseBusiness<ConcreteReportBusiness>, ICon
                     ? Math.Round(cylindersWithBreaks.Average(c => c.BreakPsi!.Value), MidpointRounding.AwayFromZero).ToString()
                     : string.Empty;
 
-                // Use actual DateTested from cylinders if available
-                var testingDate = cylinders.FirstOrDefault(c => c.DateTested.HasValue)?.DateTested;
+                // Use actual DateTested from TestSetDay
+                var testingDate = testSetDay.DateTested;
                 var comments = testSetDay.Comments ?? string.Empty;
 
                 // Calculate Age of Test and Testing Date
@@ -153,8 +153,7 @@ public class ConcreteReportBusiness : BaseBusiness<ConcreteReportBusiness>, ICon
                 {
                     // 7-day and 28-day tests not yet tested - show scheduled date
                     ageOfTest = testSetDay.DayNum.ToString();
-                    var scheduledDate = productionDay.Date.AddDays(testSetDay.DayNum);
-                    testingDateStr = FormatTestingDate(scheduledDate);
+                    testingDateStr = FormatTestingDate(testSetDay.DateDue);
                 }
 
                 reportData.Add(new ConcreteReportResponse
