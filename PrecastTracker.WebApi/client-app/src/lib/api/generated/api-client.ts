@@ -86,13 +86,14 @@ export class ApiClient {
     /**
      * @return OK
      */
-    testsDueToday(): Promise<void> {
+    testsDueToday(): Promise<TestCylinderQueueResponse[]> {
         let url_ = this.baseUrl + "/api/tester-report/tests-due-today";
         url_ = url_.replace(/[?&]$/, "");
 
         let options_: RequestInit = {
             method: "GET",
             headers: {
+                "Accept": "application/json"
             }
         };
 
@@ -101,31 +102,49 @@ export class ApiClient {
         });
     }
 
-    protected processTestsDueToday(response: Response): Promise<void> {
+    protected processTestsDueToday(response: Response): Promise<TestCylinderQueueResponse[]> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
             return response.text().then((_responseText) => {
-            return;
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            if (Array.isArray(resultData200)) {
+                result200 = [] as any;
+                for (let item of resultData200)
+                    result200!.push(TestCylinderQueueResponse.fromJS(item));
+            }
+            else {
+                result200 = null as any;
+            }
+            return result200;
+            });
+        } else if (status === 500) {
+            return response.text().then((_responseText) => {
+            let result500: any = null;
+            let resultData500 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result500 = ProblemDetails.fromJS(resultData500);
+            return throwException("Internal Server Error", status, _responseText, _headers, result500);
             });
         } else if (status !== 200 && status !== 204) {
             return response.text().then((_responseText) => {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<void>(null as any);
+        return Promise.resolve<TestCylinderQueueResponse[]>(null as any);
     }
 
     /**
      * @return OK
      */
-    testsOverdue(): Promise<void> {
+    testsOverdue(): Promise<TestCylinderQueueResponse[]> {
         let url_ = this.baseUrl + "/api/tester-report/tests-overdue";
         url_ = url_.replace(/[?&]$/, "");
 
         let options_: RequestInit = {
             method: "GET",
             headers: {
+                "Accept": "application/json"
             }
         };
 
@@ -134,26 +153,43 @@ export class ApiClient {
         });
     }
 
-    protected processTestsOverdue(response: Response): Promise<void> {
+    protected processTestsOverdue(response: Response): Promise<TestCylinderQueueResponse[]> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
             return response.text().then((_responseText) => {
-            return;
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            if (Array.isArray(resultData200)) {
+                result200 = [] as any;
+                for (let item of resultData200)
+                    result200!.push(TestCylinderQueueResponse.fromJS(item));
+            }
+            else {
+                result200 = null as any;
+            }
+            return result200;
+            });
+        } else if (status === 500) {
+            return response.text().then((_responseText) => {
+            let result500: any = null;
+            let resultData500 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result500 = ProblemDetails.fromJS(resultData500);
+            return throwException("Internal Server Error", status, _responseText, _headers, result500);
             });
         } else if (status !== 200 && status !== 204) {
             return response.text().then((_responseText) => {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<void>(null as any);
+        return Promise.resolve<TestCylinderQueueResponse[]>(null as any);
     }
 
     /**
      * @param days (optional) 
      * @return OK
      */
-    testsUpcoming(days: number | undefined): Promise<void> {
+    testsUpcoming(days: number | undefined): Promise<TestCylinderQueueResponse[]> {
         let url_ = this.baseUrl + "/api/tester-report/tests-upcoming?";
         if (days === null)
             throw new globalThis.Error("The parameter 'days' cannot be null.");
@@ -164,6 +200,7 @@ export class ApiClient {
         let options_: RequestInit = {
             method: "GET",
             headers: {
+                "Accept": "application/json"
             }
         };
 
@@ -172,20 +209,181 @@ export class ApiClient {
         });
     }
 
-    protected processTestsUpcoming(response: Response): Promise<void> {
+    protected processTestsUpcoming(response: Response): Promise<TestCylinderQueueResponse[]> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
             return response.text().then((_responseText) => {
-            return;
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            if (Array.isArray(resultData200)) {
+                result200 = [] as any;
+                for (let item of resultData200)
+                    result200!.push(TestCylinderQueueResponse.fromJS(item));
+            }
+            else {
+                result200 = null as any;
+            }
+            return result200;
+            });
+        } else if (status === 500) {
+            return response.text().then((_responseText) => {
+            let result500: any = null;
+            let resultData500 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result500 = ProblemDetails.fromJS(resultData500);
+            return throwException("Internal Server Error", status, _responseText, _headers, result500);
             });
         } else if (status !== 200 && status !== 204) {
             return response.text().then((_responseText) => {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<void>(null as any);
+        return Promise.resolve<TestCylinderQueueResponse[]>(null as any);
     }
+}
+
+export class ProblemDetails implements IProblemDetails {
+    type?: string | undefined;
+    title?: string | undefined;
+    status?: number | undefined;
+    detail?: string | undefined;
+    instance?: string | undefined;
+
+    [key: string]: any;
+
+    constructor(data?: IProblemDetails) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            for (var property in _data) {
+                if (_data.hasOwnProperty(property))
+                    this[property] = _data[property];
+            }
+            this.type = _data["type"];
+            this.title = _data["title"];
+            this.status = _data["status"];
+            this.detail = _data["detail"];
+            this.instance = _data["instance"];
+        }
+    }
+
+    static fromJS(data: any): ProblemDetails {
+        data = typeof data === 'object' ? data : {};
+        let result = new ProblemDetails();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        for (var property in this) {
+            if (this.hasOwnProperty(property))
+                data[property] = this[property];
+        }
+        data["type"] = this.type;
+        data["title"] = this.title;
+        data["status"] = this.status;
+        data["detail"] = this.detail;
+        data["instance"] = this.instance;
+        return data;
+    }
+}
+
+export interface IProblemDetails {
+    type?: string | undefined;
+    title?: string | undefined;
+    status?: number | undefined;
+    detail?: string | undefined;
+    instance?: string | undefined;
+
+    [key: string]: any;
+}
+
+export class TestCylinderQueueResponse implements ITestCylinderQueueResponse {
+    testCylinderCode?: string | undefined;
+    ovenId?: string | undefined;
+    dayNum?: number;
+    castDate?: Date;
+    castTime?: string;
+    jobCode?: string | undefined;
+    jobName?: string | undefined;
+    mixDesignCode?: string | undefined;
+    requiredPsi?: number;
+    pieceType?: string | undefined;
+    testSetId?: number;
+    isComplete?: boolean;
+
+    constructor(data?: ITestCylinderQueueResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.testCylinderCode = _data["testCylinderCode"];
+            this.ovenId = _data["ovenId"];
+            this.dayNum = _data["dayNum"];
+            this.castDate = _data["castDate"] ? new Date(_data["castDate"].toString()) : undefined as any;
+            this.castTime = _data["castTime"];
+            this.jobCode = _data["jobCode"];
+            this.jobName = _data["jobName"];
+            this.mixDesignCode = _data["mixDesignCode"];
+            this.requiredPsi = _data["requiredPsi"];
+            this.pieceType = _data["pieceType"];
+            this.testSetId = _data["testSetId"];
+            this.isComplete = _data["isComplete"];
+        }
+    }
+
+    static fromJS(data: any): TestCylinderQueueResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new TestCylinderQueueResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["testCylinderCode"] = this.testCylinderCode;
+        data["ovenId"] = this.ovenId;
+        data["dayNum"] = this.dayNum;
+        data["castDate"] = this.castDate ? this.castDate.toISOString() : undefined as any;
+        data["castTime"] = this.castTime;
+        data["jobCode"] = this.jobCode;
+        data["jobName"] = this.jobName;
+        data["mixDesignCode"] = this.mixDesignCode;
+        data["requiredPsi"] = this.requiredPsi;
+        data["pieceType"] = this.pieceType;
+        data["testSetId"] = this.testSetId;
+        data["isComplete"] = this.isComplete;
+        return data;
+    }
+}
+
+export interface ITestCylinderQueueResponse {
+    testCylinderCode?: string | undefined;
+    ovenId?: string | undefined;
+    dayNum?: number;
+    castDate?: Date;
+    castTime?: string;
+    jobCode?: string | undefined;
+    jobName?: string | undefined;
+    mixDesignCode?: string | undefined;
+    requiredPsi?: number;
+    pieceType?: string | undefined;
+    testSetId?: number;
+    isComplete?: boolean;
 }
 
 export class SwaggerException extends Error {
