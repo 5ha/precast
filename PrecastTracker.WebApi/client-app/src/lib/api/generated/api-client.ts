@@ -311,7 +311,7 @@ export class TestCylinderQueueResponse implements ITestCylinderQueueResponse {
     ovenId?: string | undefined;
     dayNum?: number;
     castDate?: Date;
-    castTime?: string;
+    castTime?: string | undefined;
     jobCode?: string | undefined;
     jobName?: string | undefined;
     mixDesignCode?: string | undefined;
@@ -376,7 +376,7 @@ export interface ITestCylinderQueueResponse {
     ovenId?: string | undefined;
     dayNum?: number;
     castDate?: Date;
-    castTime?: string;
+    castTime?: string | undefined;
     jobCode?: string | undefined;
     jobName?: string | undefined;
     mixDesignCode?: string | undefined;

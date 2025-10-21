@@ -4,7 +4,7 @@ public class Placement
 {
     public int PlacementId { get; set; }
     public string PieceType { get; set; } = string.Empty; // e.g., "Walls", "Tees", "Slabs"
-    public TimeSpan StartTime { get; set; } // Time when concrete placement began (date comes from MixBatch.ProductionDay)
+    public TimeSpan? StartTime { get; set; } // Time when concrete placement began (date comes from MixBatch.ProductionDay)
     public decimal Volume { get; set; } // Volume in cubic yards
     public string? OvenId { get; set; }
 

@@ -265,7 +265,8 @@
           },
           "castTime": {
             "type": "string",
-            "format": "date-span"
+            "format": "date-span",
+            "nullable": true
           },
           "jobCode": {
             "type": "string",

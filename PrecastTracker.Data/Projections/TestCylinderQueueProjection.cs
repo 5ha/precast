@@ -6,7 +6,7 @@ public class TestCylinderQueueProjection
     public string? OvenId { get; set; }
     public int DayNum { get; set; }
     public DateTime CastDate { get; set; } // The date from ProductionDay.Date
-    public TimeSpan CastTime { get; set; } // The time from PlacementStartTime
+    public TimeSpan? CastTime { get; set; } // The time from PlacementStartTime
     public string JobCode { get; set; } = string.Empty;
     public string JobName { get; set; } = string.Empty;
     public string MixDesignCode { get; set; } = string.Empty;

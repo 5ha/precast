@@ -14,8 +14,7 @@ public class PlacementConfiguration : IEntityTypeConfiguration<Placement>
             .IsRequired()
             .HasMaxLength(100);
 
-        builder.Property(p => p.StartTime)
-            .IsRequired();
+        builder.Property(p => p.StartTime);
 
         builder.Property(p => p.Volume)
             .HasPrecision(18, 2)

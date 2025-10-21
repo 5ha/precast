@@ -116,7 +116,7 @@ public class ConcreteReportBusiness : BaseBusiness<ConcreteReportBusiness>, ICon
                 var cylinderId = $"{testSetDay.DayNum}C";
 
                 // Format StartTime as time only (h:mm)
-                var startTimeStr = placement.StartTime.ToString(@"h\:mm");
+                var startTimeStr = placement.StartTime?.ToString(@"h\:mm") ?? string.Empty;
 
                 // Get break PSI values for up to 3 cylinders
                 var break1 = cylinders.ElementAtOrDefault(0)?.BreakPsi?.ToString() ?? string.Empty;
