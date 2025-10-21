@@ -61,6 +61,13 @@ public class TesterReportRepository : ITesterReportRepository
             .ToListAsync();
     }
 
+    public Task<TestCylinderQueueProjection?> GetTestQueueItemAsync(int testSetDayId)
+    {
+        return BaseTestCylinderQueueQuery()
+            .Where(tc => tc.TestSetDayId == testSetDayId)
+            .FirstOrDefaultAsync();
+    }
+
     public Task<List<UntestedPlacementProjection>> GetUntestedPlacementsAsync(int daysBack)
     {
         var cutoffDate = DateTime.Today.AddDays(-daysBack);

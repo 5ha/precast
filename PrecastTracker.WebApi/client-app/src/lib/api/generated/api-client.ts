@@ -253,7 +253,7 @@ export class ApiClient {
      * @param body (optional) 
      * @return OK
      */
-    testSetDayPOST(body: SaveTestSetDayDataRequest | undefined): Promise<void> {
+    testSetDayPOST(body: SaveTestSetDayDataRequest | undefined): Promise<TestCylinderQueueResponse> {
         let url_ = this.baseUrl + "/api/tester-report/test-set-day";
         url_ = url_.replace(/[?&]$/, "");
 
@@ -264,6 +264,7 @@ export class ApiClient {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
+                "Accept": "application/json"
             }
         };
 
@@ -272,12 +273,15 @@ export class ApiClient {
         });
     }
 
-    protected processTestSetDayPOST(response: Response): Promise<void> {
+    protected processTestSetDayPOST(response: Response): Promise<TestCylinderQueueResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
             return response.text().then((_responseText) => {
-            return;
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result200 = TestCylinderQueueResponse.fromJS(resultData200);
+            return result200;
             });
         } else if (status === 400) {
             return response.text().then((_responseText) => {
@@ -305,7 +309,7 @@ export class ApiClient {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<void>(null as any);
+        return Promise.resolve<TestCylinderQueueResponse>(null as any);
     }
 }
 

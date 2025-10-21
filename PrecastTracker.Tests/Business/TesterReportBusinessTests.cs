@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
 using PrecastTracker.Business;
@@ -109,5 +110,131 @@ public class TesterReportBusinessTests
         Assert.Equal(100, response.TestSetDayId);
         Assert.Equal(today, response.DateDue);
         Assert.Equal(testedDate, response.DateTested);
+    }
+
+    [Fact]
+    public async Task SaveTestSetDayDataAsync_ReturnsUpdatedTestCylinderQueueResponse()
+    {
+        // Verify that SaveTestSetDayDataAsync returns the updated TestCylinderQueueResponse
+        // from the repository after saving
+
+        // Arrange
+        var mockRepository = new Mock<ITesterReportRepository>();
+        var mockTestSetDayRepository = new Mock<ITestSetDayRepository>();
+        var mockTestResultService = new Mock<ITestResultService>();
+        var mockUnitOfWork = new Mock<IUnitOfWork>();
+        var mockLogger = new Mock<ILogger<TesterReportBusiness>>();
+        var business = new TesterReportBusiness(
+            mockRepository.Object,
+            mockTestSetDayRepository.Object,
+            mockTestResultService.Object,
+            mockUnitOfWork.Object,
+            mockLogger.Object);
+
+        var today = DateTime.Today;
+        var testSetDayId = 100;
+        var castDate = today.AddDays(-7);
+        var testedDate = today;
+
+        // Setup repository mocks
+        mockTestSetDayRepository
+            .Setup(r => r.GetCastDateAsync(testSetDayId))
+            .ReturnsAsync(castDate);
+
+        var updatedProjection = new TestCylinderQueueProjection
+        {
+            TestCylinderCode = "TEST-123",
+            OvenId = "Oven1",
+            DayNum = 7,
+            CastDate = castDate,
+            CastTime = new TimeSpan(14, 30, 45),
+            JobCode = "25-100",
+            JobName = "Test Job Name",
+            MixDesignCode = "MIX-500",
+            RequiredPsi = 5500,
+            PieceType = "Beams",
+            TestSetId = 42,
+            TestSetDayId = testSetDayId,
+            DateDue = today,
+            DateTested = testedDate
+        };
+
+        mockRepository
+            .Setup(r => r.GetTestQueueItemAsync(testSetDayId))
+            .ReturnsAsync(updatedProjection);
+
+        var request = new Contracts.DTOs.RequestResponse.SaveTestSetDayDataRequest
+        {
+            TestSetDayId = testSetDayId,
+            DateTested = testedDate,
+            Comments = "Test completed",
+            CylinderBreaks = new List<Contracts.DTOs.RequestResponse.TestCylinderBreakInput>()
+        };
+
+        // Act
+        var result = await business.SaveTestSetDayDataAsync(request);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.NotNull(result.Data);
+        Assert.Equal("TEST-123", result.Data.TestCylinderCode);
+        Assert.Equal(testSetDayId, result.Data.TestSetDayId);
+        Assert.Equal(testedDate, result.Data.DateTested);
+
+        // Verify that GetTestQueueItemAsync was called after save
+        mockRepository.Verify(
+            r => r.GetTestQueueItemAsync(testSetDayId),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task SaveTestSetDayDataAsync_ReturnsErrorWhenUpdatedProjectionNotFound()
+    {
+        // Verify that SaveTestSetDayDataAsync returns error if the updated projection
+        // cannot be retrieved after save
+
+        // Arrange
+        var mockRepository = new Mock<ITesterReportRepository>();
+        var mockTestSetDayRepository = new Mock<ITestSetDayRepository>();
+        var mockTestResultService = new Mock<ITestResultService>();
+        var mockUnitOfWork = new Mock<IUnitOfWork>();
+        var mockLogger = new Mock<ILogger<TesterReportBusiness>>();
+        var business = new TesterReportBusiness(
+            mockRepository.Object,
+            mockTestSetDayRepository.Object,
+            mockTestResultService.Object,
+            mockUnitOfWork.Object,
+            mockLogger.Object);
+
+        var today = DateTime.Today;
+        var testSetDayId = 100;
+        var castDate = today.AddDays(-7);
+        var testedDate = today;
+
+        // Setup repository mocks
+        mockTestSetDayRepository
+            .Setup(r => r.GetCastDateAsync(testSetDayId))
+            .ReturnsAsync(castDate);
+
+        // Return null from GetTestQueueItemAsync to simulate failure
+        mockRepository
+            .Setup(r => r.GetTestQueueItemAsync(testSetDayId))
+            .ReturnsAsync((TestCylinderQueueProjection?)null);
+
+        var request = new Contracts.DTOs.RequestResponse.SaveTestSetDayDataRequest
+        {
+            TestSetDayId = testSetDayId,
+            DateTested = testedDate,
+            Comments = "Test completed",
+            CylinderBreaks = new List<Contracts.DTOs.RequestResponse.TestCylinderBreakInput>()
+        };
+
+        // Act
+        var result = await business.SaveTestSetDayDataAsync(request);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Null(result.Data);
+        Assert.NotEmpty(result.Errors);
     }
 }

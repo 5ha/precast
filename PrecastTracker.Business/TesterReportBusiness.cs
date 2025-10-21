@@ -12,19 +12,19 @@ public class TesterReportBusiness : BaseBusiness<TesterReportBusiness>, ITesterR
     private readonly ITesterReportRepository _testerReportRepository;
     private readonly ITestSetDayRepository _testSetDayRepository;
     private readonly ITestResultService _testResultService;
-    private readonly ApplicationDbContext _context;
+    private readonly IUnitOfWork _unitOfWork;
 
     public TesterReportBusiness(
         ITesterReportRepository testerReportRepository,
         ITestSetDayRepository testSetDayRepository,
         ITestResultService testResultService,
-        ApplicationDbContext context,
+        IUnitOfWork unitOfWork,
         ILogger<TesterReportBusiness> logger) : base(logger)
     {
         _testerReportRepository = testerReportRepository;
         _testSetDayRepository = testSetDayRepository;
         _testResultService = testResultService;
-        _context = context;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<BusinessResult<IEnumerable<TestCylinderQueueResponse>>> GetTestQueueAsync(DateTime endDate)
@@ -128,7 +128,7 @@ public class TesterReportBusiness : BaseBusiness<TesterReportBusiness>, ITesterR
         }
     }
 
-    public async Task<BusinessResult> SaveTestSetDayDataAsync(SaveTestSetDayDataRequest request)
+    public async Task<BusinessResult<TestCylinderQueueResponse>> SaveTestSetDayDataAsync(SaveTestSetDayDataRequest request)
     {
         try
         {
@@ -140,7 +140,7 @@ public class TesterReportBusiness : BaseBusiness<TesterReportBusiness>, ITesterR
             if (castDate == null)
             {
                 _logger.LogWarning("Test set day not found for TestSetDayId: {TestSetDayId}", request.TestSetDayId);
-                return BusinessResult.Failure(
+                return BusinessResult<TestCylinderQueueResponse>.Failure(
                     BusinessError.NotFound($"Test set day with ID {request.TestSetDayId} not found"));
             }
 
@@ -149,7 +149,7 @@ public class TesterReportBusiness : BaseBusiness<TesterReportBusiness>, ITesterR
                 _logger.LogWarning(
                     "DateTested ({DateTested}) is before CastDate ({CastDate}) for TestSetDayId: {TestSetDayId}",
                     request.DateTested, castDate.Value, request.TestSetDayId);
-                return BusinessResult.Failure(
+                return BusinessResult<TestCylinderQueueResponse>.Failure(
                     BusinessError.Validation($"Test date cannot be before cast date ({castDate.Value:yyyy-MM-dd})"));
             }
 
@@ -165,19 +165,31 @@ public class TesterReportBusiness : BaseBusiness<TesterReportBusiness>, ITesterR
             catch (InvalidOperationException ex)
             {
                 _logger.LogWarning(ex, "Validation error while updating test results for TestSetDayId: {TestSetDayId}", request.TestSetDayId);
-                return BusinessResult.Failure(BusinessError.Validation(ex.Message));
+                return BusinessResult<TestCylinderQueueResponse>.Failure(BusinessError.Validation(ex.Message));
             }
 
             // Save changes
-            await _context.SaveChangesAsync();
+            await _unitOfWork.SaveChangesAsync();
+
+            // Fetch updated projection as source of truth
+            var updatedProjection = await _testerReportRepository.GetTestQueueItemAsync(request.TestSetDayId);
+
+            if (updatedProjection == null)
+            {
+                _logger.LogWarning("Could not retrieve updated test queue item for TestSetDayId: {TestSetDayId}", request.TestSetDayId);
+                return BusinessResult<TestCylinderQueueResponse>.Failure(
+                    BusinessError.InternalError("Test data was saved but could not be retrieved"));
+            }
+
+            var response = MapToResponse(updatedProjection);
 
             _logger.LogInformation("Successfully saved test set day data for TestSetDayId: {TestSetDayId}", request.TestSetDayId);
-            return BusinessResult.Success();
+            return BusinessResult<TestCylinderQueueResponse>.Success(response);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error saving test set day data for TestSetDayId: {TestSetDayId}", request.TestSetDayId);
-            return BusinessResult.Failure(
+            return BusinessResult<TestCylinderQueueResponse>.Failure(
                 BusinessError.InternalError("Failed to save test set day data"));
         }
     }

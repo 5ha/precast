@@ -277,6 +277,79 @@ public class TesterReportRepositoryTests
         Assert.Empty(result); // All tests either tested (past) or beyond endDate
     }
 
+    [Fact]
+    public async Task GetTestQueueItemAsync_ReturnsSingleItemByTestSetDayId()
+    {
+        // Verify that GetTestQueueItemAsync returns the correct projection for a specific TestSetDayId
+
+        // Arrange
+        using var context = CreateContext();
+        var repository = new TesterReportRepository(context);
+        var today = DateTime.Today;
+        var testData = CreateTestDataSet(today);
+        await SeedTestDataAsync(context, testData);
+
+        // Act
+        var result = await repository.GetTestQueueItemAsync(testData.TestSetDayToday1.TestSetDayId);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal("TODAY-1-1", result.TestCylinderCode);
+        Assert.Equal(testData.TestSetDayToday1.TestSetDayId, result.TestSetDayId);
+        Assert.Equal(1, result.DayNum);
+        Assert.Equal("25-002", result.JobCode);
+        Assert.Equal("Test Job 2", result.JobName);
+        Assert.Equal("MIX-2", result.MixDesignCode);
+        Assert.Equal(4000, result.RequiredPsi);
+        Assert.Equal("Tees", result.PieceType);
+        Assert.Equal(today, result.DateDue);
+        Assert.Null(result.DateTested);
+    }
+
+    [Fact]
+    public async Task GetTestQueueItemAsync_ReturnsNullWhenTestSetDayIdNotFound()
+    {
+        // Verify that GetTestQueueItemAsync returns null for non-existent TestSetDayId
+
+        // Arrange
+        using var context = CreateContext();
+        var repository = new TesterReportRepository(context);
+        var today = DateTime.Today;
+        var testData = CreateTestDataSet(today);
+        await SeedTestDataAsync(context, testData);
+
+        // Act
+        var result = await repository.GetTestQueueItemAsync(99999);
+
+        // Assert
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task GetTestQueueItemAsync_ReturnsUpdatedDateTested()
+    {
+        // Verify that GetTestQueueItemAsync returns the updated DateTested value after save
+
+        // Arrange
+        using var context = CreateContext();
+        var repository = new TesterReportRepository(context);
+        var today = DateTime.Today;
+        var testData = CreateTestDataSet(today);
+        await SeedTestDataAsync(context, testData);
+
+        // Mark the test as tested
+        var testedDate = today.AddHours(10);
+        testData.TestSetDayToday1.DateTested = testedDate;
+        await context.SaveChangesAsync();
+
+        // Act
+        var result = await repository.GetTestQueueItemAsync(testData.TestSetDayToday1.TestSetDayId);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(testedDate, result.DateTested);
+    }
+
     #endregion
 
     #region GetUntestedPlacementsAsync Tests

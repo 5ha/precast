@@ -65,9 +65,12 @@
 		selectedTestSetDayId = null;
 	}
 
-	async function handleModalSuccess() {
-		// Refresh the test list after successful save
-		await loadTests();
+	async function handleModalSuccess(updatedItem: TestCylinderQueueResponse) {
+		// Update the item in the array instead of reloading all tests
+		const index = tests.findIndex(t => t.testSetDayId === updatedItem.testSetDayId);
+		if (index !== -1) {
+			tests[index] = updatedItem;
+		}
 	}
 
 	function handleEndDateChange(event: Event) {

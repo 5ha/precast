@@ -4,6 +4,7 @@
 		GetTestSetDayDetailsResponse,
 		SaveTestSetDayDataRequest,
 		TestCylinderBreakInput,
+		TestCylinderQueueResponse,
 		SwaggerException
 	} from '$lib/api/generated/api-client';
 
@@ -11,7 +12,7 @@
 		testSetDayId: number | null;
 		open: boolean;
 		onClose: () => void;
-		onSuccess?: () => void;
+		onSuccess?: (updatedItem: TestCylinderQueueResponse) => void;
 	}
 
 	let { testSetDayId, open, onClose, onSuccess }: Props = $props();
@@ -103,26 +104,29 @@
 				dateTested: new Date(formData.dateTested),
 				comments: formData.comments || undefined,
 				cylinderBreaks: formData.cylinderBreaks
-					.filter((cb) => cb.breakPsi && cb.breakPsi.trim() !== '')
+					.filter((cb) => cb.breakPsi && cb.breakPsi.toString().trim() !== '')
 					.map(
 						(cb) =>
 							new TestCylinderBreakInput({
 								testCylinderId: cb.testCylinderId,
-								breakPsi: parseInt(cb.breakPsi)
+								breakPsi: parseInt(cb.breakPsi.toString())
 							})
 					)
 			});
 
-			await client.testSetDayPOST(request);
+			const updatedItem = await client.testSetDayPOST(request);
 
-			// Success - close modal and trigger refresh
+			// Success - close modal and pass updated item to callback
 			onClose();
 			if (onSuccess) {
-				onSuccess();
+				onSuccess(updatedItem);
 			}
 		} catch (e) {
+			console.error('Save error:', e);
 			if (e instanceof SwaggerException) {
 				error = `Error saving test data: ${e.message}`;
+			} else if (e instanceof Error) {
+				error = `An unexpected error occurred while saving: ${e.message}`;
 			} else {
 				error = 'An unexpected error occurred while saving';
 			}
