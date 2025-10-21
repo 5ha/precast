@@ -361,9 +361,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "isComplete": {
-            "type": "boolean"
-          },
           "dateDue": {
             "type": "string",
             "format": "date-time"

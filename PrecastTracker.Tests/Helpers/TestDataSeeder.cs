@@ -278,7 +278,6 @@ public static class TestDataSeeder
                         DayNum = testType,
                         DateDue = dueDate,
                         DateTested = testingDate,
-                        IsComplete = false,
                         Comments = string.IsNullOrWhiteSpace(comments) ? null : comments
                     };
                     context.TestSetDays.Add(testSetDay);

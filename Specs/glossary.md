@@ -238,7 +238,7 @@ Each Placement will have a single TestSet that organizes all the testing require
 - **TestSetId**: Which TestSet this belongs to
 - **DayNum**: Age of test (1, 7, or 28 days)
 - **DateDue**: Scheduled testing date set by the application when the TestSetDay is created (`ProductionDay.Date + DayNo`). The code must always populate this during creation so the due date persists even before any cylinders are tested.
-- **IsComplete**: Marks when all cylinders for this day are tested in UI
+- **DateTested**: The date we actually ran the test (nullable - null means not tested yet)
 - **Comments**: Any notes about this test day
 
 **Calculated Properties:**
@@ -265,7 +265,7 @@ For Placement #457 (MixBatch #12346, Mix 622.1, StartTime 17:00 on ProductionDay
 - 7-day and 28-day tests verify the MixBatch meets design specifications (can query by MixBatchId via Placement)
 - 1-day tests allow quick release of specific pieces from that Placement
 - Multiple test cylinders per TestSetDay ensure reliability
-- IsComplete flag allows UI to track which test days have been completed
+- DateTested tracks completion status (null = not tested, non-null = tested on that date)
 
 **Relationships:**
 - A TestSetDay belongs to one TestSet (required)
@@ -280,16 +280,17 @@ For Placement #457 (MixBatch #12346, Mix 622.1, StartTime 17:00 on ProductionDay
 - **TestCylinderId**: Unique identifier
 - **Code**: What was written on the physical cylinder for identification (e.g., "12345-7-25-020"). Default format (implemented in UI): `[MixBatchId]-[DayNo]-[JobCode]`
 - **TestSetDayId**: Which test set day this belongs to
-- **DateTested**: The date we actually ran the test (nullable)
 - **BreakPsi**: The compression strength result (PSI) - nullable until tested
 
 **Real-world context:**
-TestSetDay #2 (7-day test, DayNum 7, for Placement 456 / MixBatch #12345) has three test cylinders crushed:
-- TestCylinder #1: DateTested 09/17/2025, BreakPsi 6463
-- TestCylinder #2: DateTested 09/17/2025, BreakPsi 6427
-- TestCylinder #3: DateTested 09/17/2025, BreakPsi 6445
+TestSetDay #2 (7-day test, DayNum 7, for Placement 456 / MixBatch #12345, DateTested 09/17/2025) has three test cylinders crushed:
+- TestCylinder #1: BreakPsi 6463
+- TestCylinder #2: BreakPsi 6427
+- TestCylinder #3: BreakPsi 6445
 
 Average PSI for the TestSetDay = 6445 PSI
+
+**Note:** All cylinders in a TestSetDay are tested together on the same date. The testing date is stored at the TestSetDay level, not on individual cylinders.
 
 **Why multiple breaks matter:**
 Multiple test cylinders from the same batch ensure test reliability. If one cylinder was damaged or improperly cured, the other results provide verification.
@@ -333,28 +334,28 @@ Multiple test cylinders from the same batch ensure test reliability. If one cyli
 
 8. **TestSets and TestSetDays Created:**
    - TestSet #1: PlacementId 456
-     - TestSetDay #101: DayNum 1, IsComplete false, DateDue 09/11/2025 (ProductionDay.Date + 1)
-     - TestSetDay #102: DayNum 7, IsComplete false, DateDue 09/17/2025 (ProductionDay.Date + 7)
-     - TestSetDay #103: DayNum 28, IsComplete false, DateDue 10/08/2025 (ProductionDay.Date + 28)
+     - TestSetDay #101: DayNum 1, DateDue 09/11/2025 (ProductionDay.Date + 1), DateTested null
+     - TestSetDay #102: DayNum 7, DateDue 09/17/2025 (ProductionDay.Date + 7), DateTested null
+     - TestSetDay #103: DayNum 28, DateDue 10/08/2025 (ProductionDay.Date + 28), DateTested null
    - TestSet #2: PlacementId 457
-     - TestSetDay #104: DayNum 1, IsComplete false, DateDue 09/11/2025 (ProductionDay.Date + 1)
-     - TestSetDay #105: DayNum 7, IsComplete false, DateDue 09/17/2025 (ProductionDay.Date + 7)
-     - TestSetDay #106: DayNum 28, IsComplete false, DateDue 10/08/2025 (ProductionDay.Date + 28)
+     - TestSetDay #104: DayNum 1, DateDue 09/11/2025 (ProductionDay.Date + 1), DateTested null
+     - TestSetDay #105: DayNum 7, DateDue 09/17/2025 (ProductionDay.Date + 7), DateTested null
+     - TestSetDay #106: DayNum 28, DateDue 10/08/2025 (ProductionDay.Date + 28), DateTested null
 
 9. **Testing Results:**
-   - TestSetDay #102 (7-day, Placement 456, Mix 2509.1):
-     - TestCylinder #1: DateTested 09/17/2025, BreakPsi 6463
-     - TestCylinder #2: DateTested 09/17/2025, BreakPsi 6427
+   - TestSetDay #102 (7-day, Placement 456, Mix 2509.1, DateTested 09/17/2025):
+     - TestCylinder #1: BreakPsi 6463
+     - TestCylinder #2: BreakPsi 6427
      - Average: 6445 PSI → PASS (required 6000 per MixDesignRequirement)
 
-   - TestSetDay #101 (1-day, Placement 456, Mix 2509.1):
-     - TestCylinder #3: DateTested 09/11/2025, BreakPsi 3580
-     - TestCylinder #4: DateTested 09/11/2025, BreakPsi 3503
+   - TestSetDay #101 (1-day, Placement 456, Mix 2509.1, DateTested 09/11/2025):
+     - TestCylinder #3: BreakPsi 3580
+     - TestCylinder #4: BreakPsi 3503
      - Average: 3542 PSI → PASS (required 3500 per MixDesignRequirement)
 
-   - TestSetDay #104 (1-day, Placement 457, Mix 622.1):
-     - TestCylinder #5: DateTested 09/11/2025, BreakPsi 4419
-     - TestCylinder #6: DateTested 09/11/2025, BreakPsi 4305
+   - TestSetDay #104 (1-day, Placement 457, Mix 622.1, DateTested 09/11/2025):
+     - TestCylinder #5: BreakPsi 4419
+     - TestCylinder #6: BreakPsi 4305
      - Average: 4362 PSI → PASS (required 3500 per MixDesignRequirement)
 
 **Result:** Pour 6539 has 2 Placements using 2 MixBatches, delivered by 6 trucks, with 2 TestSets (6 TestSetDays) ensuring quality control for all concrete used that day.
@@ -400,5 +401,5 @@ This allows answering critical questions like:
 - "What were all the test results for MixBatch #12345?" - Query TestSetDay where TestSet.Placement.MixBatchId = 12345
 - "What strength is required for this test?" - Follow TestSetDay → TestSet → Placement → MixBatch → MixDesign → MixDesignRequirement (where TestType matches DayNum)
 - "Which test days are scheduled for today?" - Query TestSetDay where Placement.ProductionDay.Date + DayNum = Today
-- "Which test days are complete?" - Query TestSetDay where IsComplete = true
+- "Which test days are complete?" - Query TestSetDay where DateTested IS NOT NULL
 - "Which days did Pour 6539 span?" - Query SELECT DISTINCT ProductionDayId FROM Placement JOIN MixBatch WHERE PourId = 6539

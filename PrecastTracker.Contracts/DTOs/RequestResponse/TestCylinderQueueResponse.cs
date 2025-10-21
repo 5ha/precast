@@ -13,6 +13,5 @@ public class TestCylinderQueueResponse
     public int RequiredPsi { get; set; }
     public string PieceType { get; set; } = string.Empty;
     public int TestSetId { get; set; }
-    public bool IsComplete { get; set; }
     public DateTime DateDue { get; set; }
 }

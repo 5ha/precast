@@ -17,7 +17,7 @@ public class TesterReportRepository : ITesterReportRepository
         var today = DateTime.Today;
         return _context.TestCylinders
             .AsNoTracking()
-            .Where(tc => tc.TestSetDay.DateDue < today && !tc.TestSetDay.IsComplete)
+            .Where(tc => tc.TestSetDay.DateDue < today && tc.TestSetDay.DateTested == null)
             .Join(
                 _context.MixDesignRequirements,
                 tc => new {
@@ -41,7 +41,6 @@ public class TesterReportRepository : ITesterReportRepository
                     RequiredPsi = mdr.RequiredPsi,
                     PieceType = tc.TestSetDay.TestSet.Placement.PieceType,
                     TestSetId = tc.TestSetDay.TestSetId,
-                    IsComplete = tc.TestSetDay.IsComplete,
                     DateDue = tc.TestSetDay.DateDue
                 })
             .ToListAsync();
@@ -77,7 +76,6 @@ public class TesterReportRepository : ITesterReportRepository
                     RequiredPsi = mdr.RequiredPsi,
                     PieceType = tc.TestSetDay.TestSet.Placement.PieceType,
                     TestSetId = tc.TestSetDay.TestSetId,
-                    IsComplete = tc.TestSetDay.IsComplete,
                     DateDue = tc.TestSetDay.DateDue
                 })
             .ToListAsync();
@@ -111,7 +109,6 @@ public class TesterReportRepository : ITesterReportRepository
                     RequiredPsi = mdr.RequiredPsi,
                     PieceType = tc.TestSetDay.TestSet.Placement.PieceType,
                     TestSetId = tc.TestSetDay.TestSetId,
-                    IsComplete = tc.TestSetDay.IsComplete,
                     DateDue = tc.TestSetDay.DateDue
                 })
             .ToListAsync();

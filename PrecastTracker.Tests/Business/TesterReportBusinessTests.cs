@@ -69,7 +69,7 @@ public class TesterReportBusinessTests
                 RequiredPsi = 5500,
                 PieceType = "Beams",
                 TestSetId = 42,
-                IsComplete = true
+                DateDue = today
             }
         };
 
@@ -96,6 +96,6 @@ public class TesterReportBusinessTests
         Assert.Equal(5500, response.RequiredPsi);
         Assert.Equal("Beams", response.PieceType);
         Assert.Equal(42, response.TestSetId);
-        Assert.True(response.IsComplete);
+        Assert.Equal(today, response.DateDue);
     }
 }

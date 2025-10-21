@@ -28,7 +28,7 @@ public class TesterReportRepositoryTests
     {
         // Verify that GetTestsDuePastAsync returns only tests that are:
         // 1. Due before today (DateDue < today)
-        // 2. Marked as incomplete (IsComplete = false)
+        // 2. Not yet tested (DateTested = null)
 
         // Arrange
         using var context = CreateContext();
@@ -42,16 +42,15 @@ public class TesterReportRepositoryTests
         var resultList = result.ToList();
 
         // Assert
-        Assert.Single(resultList); // Only one test due in the past and incomplete
+        Assert.Single(resultList); // Only one test due in the past and not tested
         Assert.Equal("PAST-1-7", resultList[0].TestCylinderCode);
         Assert.Equal(7, resultList[0].DayNum);
-        Assert.False(resultList[0].IsComplete);
     }
 
     [Fact]
     public async Task GetTestsDuePastAsync_ExcludesCompletedTests()
     {
-        // Verify that tests marked as complete (IsComplete = true) are excluded,
+        // Verify that tests that have been tested (DateTested is not null) are excluded,
         // even if they are due in the past
 
         // Arrange
@@ -60,8 +59,8 @@ public class TesterReportRepositoryTests
         var today = DateTime.Today;
         var testData = CreateTestDataSet(today);
 
-        // Mark the past test as complete
-        testData.TestSetDayPast.IsComplete = true;
+        // Mark the past test as tested
+        testData.TestSetDayPast.DateTested = today.AddDays(-2);
 
         await SeedTestDataAsync(context, testData);
 
@@ -69,7 +68,7 @@ public class TesterReportRepositoryTests
         var result = await repository.GetTestsDuePastAsync();
 
         // Assert
-        Assert.Empty(result); // Should return no results since the past test is complete
+        Assert.Empty(result); // Should return no results since the past test has been tested
     }
 
     [Fact]
@@ -139,7 +138,6 @@ public class TesterReportRepositoryTests
         Assert.Equal("MIX-1", projection.MixDesignCode);
         Assert.Equal(3500, projection.RequiredPsi);
         Assert.Equal("Walls", projection.PieceType);
-        Assert.False(projection.IsComplete);
         Assert.Equal(today.AddDays(-7), projection.DateDue);
     }
 
@@ -182,8 +180,8 @@ public class TesterReportRepositoryTests
         var today = DateTime.Today;
         var testData = CreateTestDataSet(today);
 
-        // Mark one of today's tests as complete
-        testData.TestSetDayToday1.IsComplete = true;
+        // Mark one of today's tests as tested
+        testData.TestSetDayToday1.DateTested = today;
 
         await SeedTestDataAsync(context, testData);
 
@@ -191,10 +189,10 @@ public class TesterReportRepositoryTests
         var result = await repository.GetTestsDueTodayAsync();
         var resultList = result.ToList();
 
-        // Assert - Both complete and incomplete tests should be included
+        // Assert - Both tested and untested tests should be included
         Assert.Equal(2, resultList.Count);
-        Assert.Contains(resultList, t => t.TestCylinderCode == "TODAY-1-1" && t.IsComplete);
-        Assert.Contains(resultList, t => t.TestCylinderCode == "TODAY-2-1" && !t.IsComplete);
+        Assert.Contains(resultList, t => t.TestCylinderCode == "TODAY-1-1");
+        Assert.Contains(resultList, t => t.TestCylinderCode == "TODAY-2-1");
     }
 
     [Fact]
@@ -307,8 +305,8 @@ public class TesterReportRepositoryTests
         var today = DateTime.Today;
         var testData = CreateTestDataSet(today);
 
-        // Mark future test as complete
-        testData.TestSetDayFuture.IsComplete = true;
+        // Mark future test as tested
+        testData.TestSetDayFuture.DateTested = today.AddDays(30);
 
         await SeedTestDataAsync(context, testData);
 
@@ -319,9 +317,8 @@ public class TesterReportRepositoryTests
         var result = await repository.GetTestsDueBetweenDatesAsync(startDate, endDate);
         var resultList = result.ToList();
 
-        // Assert - Should include completed test
+        // Assert - Should include tested test
         Assert.Single(resultList);
-        Assert.True(resultList[0].IsComplete);
     }
 
     [Fact]
@@ -808,8 +805,7 @@ public class TesterReportRepositoryTests
         {
             TestSet = data.TestSet1,
             DayNum = 7,
-            DateDue = today.AddDays(-7),
-            IsComplete = false
+            DateDue = today.AddDays(-7)
         };
 
         // Today test 1: 1-day test from yesterday, due today
@@ -817,8 +813,7 @@ public class TesterReportRepositoryTests
         {
             TestSet = data.TestSet2,
             DayNum = 1,
-            DateDue = today,
-            IsComplete = false
+            DateDue = today
         };
 
         // Today test 2: Another 1-day test from yesterday, due today (different placement)
@@ -826,8 +821,7 @@ public class TesterReportRepositoryTests
         {
             TestSet = data.TestSet2,
             DayNum = 1,
-            DateDue = today,
-            IsComplete = false
+            DateDue = today
         };
 
         // Future test: 28-day test from today, due in 28 days
@@ -835,8 +829,7 @@ public class TesterReportRepositoryTests
         {
             TestSet = data.TestSet3,
             DayNum = 28,
-            DateDue = today.AddDays(28),
-            IsComplete = false
+            DateDue = today.AddDays(28)
         };
 
         // Create Test Cylinders

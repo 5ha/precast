@@ -110,7 +110,7 @@ public class TesterReportBusiness : BaseBusiness<TesterReportBusiness>, ITesterR
             RequiredPsi = projection.RequiredPsi,
             PieceType = projection.PieceType,
             TestSetId = projection.TestSetId,
-            IsComplete = projection.IsComplete
+            DateDue = projection.DateDue
         };
     }
 

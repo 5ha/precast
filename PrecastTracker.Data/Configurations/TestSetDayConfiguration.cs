@@ -13,10 +13,6 @@ public class TestSetDayConfiguration : IEntityTypeConfiguration<TestSetDay>
         builder.Property(tsd => tsd.DayNum)
             .IsRequired();
 
-        builder.Property(tsd => tsd.IsComplete)
-            .IsRequired()
-            .HasDefaultValue(false);
-
         builder.Property(tsd => tsd.DateDue)
             .IsRequired();
 

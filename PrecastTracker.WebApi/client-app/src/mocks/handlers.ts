@@ -19,7 +19,6 @@ const mockTestsDueToday: ITestCylinderQueueResponse[] = [
 		requiredPsi: 6000,
 		pieceType: 'Walls',
 		testSetId: 1,
-		isComplete: false,
 		dateDue: new Date(today)
 	},
 	{
@@ -34,7 +33,6 @@ const mockTestsDueToday: ITestCylinderQueueResponse[] = [
 		requiredPsi: 3500,
 		pieceType: 'Tees',
 		testSetId: 2,
-		isComplete: false,
 		dateDue: new Date(today)
 	},
 	{
@@ -49,7 +47,6 @@ const mockTestsDueToday: ITestCylinderQueueResponse[] = [
 		requiredPsi: 5000,
 		pieceType: 'Beams',
 		testSetId: 3,
-		isComplete: false,
 		dateDue: new Date(today)
 	},
 	{
@@ -64,7 +61,6 @@ const mockTestsDueToday: ITestCylinderQueueResponse[] = [
 		requiredPsi: 4500,
 		pieceType: 'Columns',
 		testSetId: 4,
-		isComplete: true,
 		dateDue: new Date(today)
 	},
 	{
@@ -79,7 +75,6 @@ const mockTestsDueToday: ITestCylinderQueueResponse[] = [
 		requiredPsi: 4000,
 		pieceType: 'Slabs',
 		testSetId: 5,
-		isComplete: false,
 		dateDue: new Date(today)
 	}
 ];
@@ -97,7 +92,6 @@ const mockTestsOverdue: ITestCylinderQueueResponse[] = [
 		requiredPsi: 5500,
 		pieceType: 'Walls',
 		testSetId: 6,
-		isComplete: false,
 		dateDue: new Date(today.getTime() - 3 * 24 * 60 * 60 * 1000) // 3 days overdue
 	},
 	{
@@ -112,7 +106,6 @@ const mockTestsOverdue: ITestCylinderQueueResponse[] = [
 		requiredPsi: 4000,
 		pieceType: 'Slabs',
 		testSetId: 7,
-		isComplete: false,
 		dateDue: new Date(today.getTime() - 1 * 24 * 60 * 60 * 1000) // 1 day overdue
 	},
 	{
@@ -127,7 +120,6 @@ const mockTestsOverdue: ITestCylinderQueueResponse[] = [
 		requiredPsi: 7000,
 		pieceType: 'Beams',
 		testSetId: 8,
-		isComplete: false,
 		dateDue: new Date(today.getTime() - 5 * 24 * 60 * 60 * 1000) // 5 days overdue
 	},
 	{
@@ -142,7 +134,6 @@ const mockTestsOverdue: ITestCylinderQueueResponse[] = [
 		requiredPsi: 5000,
 		pieceType: 'Columns',
 		testSetId: 9,
-		isComplete: false,
 		dateDue: new Date(today.getTime() - 18 * 60 * 60 * 1000) // 18 hours overdue
 	}
 ];
@@ -160,7 +151,6 @@ const mockTestsUpcoming: ITestCylinderQueueResponse[] = [
 		requiredPsi: 6500,
 		pieceType: 'Tees',
 		testSetId: 7,
-		isComplete: false,
 		dateDue: new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000) // 2 days from now
 	}
 ];
