@@ -11,11 +11,9 @@ namespace PrecastTracker.Tests.Business;
 public class TesterReportBusinessTests
 {
     [Fact]
-    public async Task GetTestsUpcomingAsync_UsesCorrectDateBoundaries()
+    public async Task GetTestQueueAsync_CallsRepositoryWithCorrectEndDate()
     {
-        // Verify that GetTestsUpcomingAsync uses:
-        // - Start date: beginning of tomorrow (00:00:00)
-        // - End date: end of the last day (23:59:59.999)
+        // Verify that GetTestQueueAsync passes the endDate parameter to the repository
 
         // Arrange
         var mockRepository = new Mock<ITesterReportRepository>();
@@ -29,32 +27,25 @@ public class TesterReportBusinessTests
             null!, // DbContext not used in this test
             mockLogger.Object);
 
-        var days = 7;
-        var today = DateTime.Today;
-        var expectedStartDate = today.AddDays(1); // Tomorrow at 00:00:00
-        var expectedEndDate = today.AddDays(days).AddDays(1).AddTicks(-1); // End of day 7 (23:59:59.999...)
+        var endDate = DateTime.Today.AddDays(7);
 
         mockRepository
-            .Setup(r => r.GetTestsDueBetweenDatesAsync(
-                expectedStartDate,
-                expectedEndDate))
+            .Setup(r => r.GetTestQueueAsync(endDate))
             .ReturnsAsync(new List<TestCylinderQueueProjection>());
 
         // Act
-        await business.GetTestsUpcomingAsync(days);
+        await business.GetTestQueueAsync(endDate);
 
         // Assert
         mockRepository.Verify(
-            r => r.GetTestsDueBetweenDatesAsync(
-                expectedStartDate,
-                expectedEndDate),
+            r => r.GetTestQueueAsync(endDate),
             Times.Once);
     }
 
     [Fact]
-    public async Task GetTestsDueTodayAsync_MapsProjectionToDtoCorrectly()
+    public async Task GetTestQueueAsync_MapsProjectionToDtoCorrectly()
     {
-        // Verify that all properties are correctly mapped from
+        // Verify that all properties including DateTested are correctly mapped from
         // TestCylinderQueueProjection to TestCylinderQueueResponse
 
         // Arrange
@@ -70,6 +61,7 @@ public class TesterReportBusinessTests
             mockLogger.Object);
 
         var today = DateTime.Today;
+        var testedDate = today.AddDays(-1);
         var projections = new List<TestCylinderQueueProjection>
         {
             new TestCylinderQueueProjection
@@ -85,16 +77,18 @@ public class TesterReportBusinessTests
                 RequiredPsi = 5500,
                 PieceType = "Beams",
                 TestSetId = 42,
-                DateDue = today
+                TestSetDayId = 100,
+                DateDue = today,
+                DateTested = testedDate
             }
         };
 
         mockRepository
-            .Setup(r => r.GetTestsDueTodayAsync())
+            .Setup(r => r.GetTestQueueAsync(It.IsAny<DateTime>()))
             .ReturnsAsync(projections);
 
         // Act
-        var result = await business.GetTestsDueTodayAsync();
+        var result = await business.GetTestQueueAsync(today.AddDays(7));
 
         // Assert
         Assert.True(result.Succeeded);
@@ -112,6 +106,8 @@ public class TesterReportBusinessTests
         Assert.Equal(5500, response.RequiredPsi);
         Assert.Equal("Beams", response.PieceType);
         Assert.Equal(42, response.TestSetId);
+        Assert.Equal(100, response.TestSetDayId);
         Assert.Equal(today, response.DateDue);
+        Assert.Equal(testedDate, response.DateTested);
     }
 }

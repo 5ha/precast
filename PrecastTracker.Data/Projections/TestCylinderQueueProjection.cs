@@ -15,4 +15,5 @@ public class TestCylinderQueueProjection
     public int TestSetId { get; set; }
     public int TestSetDayId { get; set; }
     public DateTime DateDue { get; set; }
+    public DateTime? DateTested { get; set; }
 }

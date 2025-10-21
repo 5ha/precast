@@ -238,8 +238,13 @@ Each Placement will have a single TestSet that organizes all the testing require
 - **TestSetId**: Which TestSet this belongs to
 - **DayNum**: Age of test (1, 7, or 28 days)
 - **DateDue**: Scheduled testing date set by the application when the TestSetDay is created (`ProductionDay.Date + DayNo`). The code must always populate this during creation so the due date persists even before any cylinders are tested.
-- **DateTested**: The date we actually ran the test (nullable - null means not tested yet)
+- **DateTested**: The date we actually ran the test (nullable - null means not tested yet). This field serves as the completion status indicator.
 - **Comments**: Any notes about this test day
+
+**Completion Status:**
+- A TestSetDay is considered complete when `DateTested` is not null
+- A TestSetDay is considered incomplete/pending when `DateTested` is null
+- The frontend uses `DateTested` combined with `DateDue` to determine visual status (overdue, due today, upcoming, completed)
 
 **Calculated Properties:**
 - **AgeOfTest**: Calculated as the actual test execution date (or DateDue when future) minus Placement.StartTime
@@ -266,6 +271,12 @@ For Placement #457 (MixBatch #12346, Mix 622.1, StartTime 17:00 on ProductionDay
 - 1-day tests allow quick release of specific pieces from that Placement
 - Multiple test cylinders per TestSetDay ensure reliability
 - DateTested tracks completion status (null = not tested, non-null = tested on that date)
+
+**Tester Queue Pattern:**
+The application uses a unified test queue that shows all tests with different filtering logic:
+- **Overdue tests** (DateDue < today AND DateTested IS NULL): Only untested past-due tests
+- **Today and future tests** (DateDue >= today AND DateDue <= endDate): All tests including completed ones
+This allows testers to see what's overdue, what's due today, and what's upcoming, while also showing completed tests for reference
 
 **Relationships:**
 - A TestSetDay belongs to one TestSet (required)
@@ -400,6 +411,7 @@ This allows answering critical questions like:
 - "Can we release the pieces from Placement #456 based on the 1-day test results?" - Query TestSetDay where TestSet.PlacementId = 456 and DayNum = 1, compare AveragePsi to MixDesignRequirement.RequiredPsi
 - "What were all the test results for MixBatch #12345?" - Query TestSetDay where TestSet.Placement.MixBatchId = 12345
 - "What strength is required for this test?" - Follow TestSetDay → TestSet → Placement → MixBatch → MixDesign → MixDesignRequirement (where TestType matches DayNum)
-- "Which test days are scheduled for today?" - Query TestSetDay where Placement.ProductionDay.Date + DayNum = Today
 - "Which test days are complete?" - Query TestSetDay where DateTested IS NOT NULL
+- "Which test days are pending?" - Query TestSetDay where DateTested IS NULL
+- "What's in the tester's queue through tomorrow?" - Query TestSetDay where (DateDue < today AND DateTested IS NULL) OR (DateDue >= today AND DateDue <= tomorrow), ordered by DateDue
 - "Which days did Pour 6539 span?" - Query SELECT DISTINCT ProductionDayId FROM Placement JOIN MixBatch WHERE PourId = 6539

@@ -84,10 +84,15 @@ export class ApiClient {
     }
 
     /**
+     * @param endDate (optional) 
      * @return OK
      */
-    testsDueToday(): Promise<TestCylinderQueueResponse[]> {
-        let url_ = this.baseUrl + "/api/tester-report/tests-due-today";
+    testQueue(endDate: Date | undefined): Promise<TestCylinderQueueResponse[]> {
+        let url_ = this.baseUrl + "/api/tester-report/test-queue?";
+        if (endDate === null)
+            throw new globalThis.Error("The parameter 'endDate' cannot be null.");
+        else if (endDate !== undefined)
+            url_ += "endDate=" + encodeURIComponent(endDate ? "" + endDate.toISOString() : "") + "&";
         url_ = url_.replace(/[?&]$/, "");
 
         let options_: RequestInit = {
@@ -98,118 +103,11 @@ export class ApiClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processTestsDueToday(_response);
+            return this.processTestQueue(_response);
         });
     }
 
-    protected processTestsDueToday(response: Response): Promise<TestCylinderQueueResponse[]> {
-        const status = response.status;
-        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
-        if (status === 200) {
-            return response.text().then((_responseText) => {
-            let result200: any = null;
-            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
-            if (Array.isArray(resultData200)) {
-                result200 = [] as any;
-                for (let item of resultData200)
-                    result200!.push(TestCylinderQueueResponse.fromJS(item));
-            }
-            else {
-                result200 = null as any;
-            }
-            return result200;
-            });
-        } else if (status === 500) {
-            return response.text().then((_responseText) => {
-            let result500: any = null;
-            let resultData500 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
-            result500 = ProblemDetails.fromJS(resultData500);
-            return throwException("Internal Server Error", status, _responseText, _headers, result500);
-            });
-        } else if (status !== 200 && status !== 204) {
-            return response.text().then((_responseText) => {
-            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
-            });
-        }
-        return Promise.resolve<TestCylinderQueueResponse[]>(null as any);
-    }
-
-    /**
-     * @return OK
-     */
-    testsOverdue(): Promise<TestCylinderQueueResponse[]> {
-        let url_ = this.baseUrl + "/api/tester-report/tests-overdue";
-        url_ = url_.replace(/[?&]$/, "");
-
-        let options_: RequestInit = {
-            method: "GET",
-            headers: {
-                "Accept": "application/json"
-            }
-        };
-
-        return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processTestsOverdue(_response);
-        });
-    }
-
-    protected processTestsOverdue(response: Response): Promise<TestCylinderQueueResponse[]> {
-        const status = response.status;
-        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
-        if (status === 200) {
-            return response.text().then((_responseText) => {
-            let result200: any = null;
-            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
-            if (Array.isArray(resultData200)) {
-                result200 = [] as any;
-                for (let item of resultData200)
-                    result200!.push(TestCylinderQueueResponse.fromJS(item));
-            }
-            else {
-                result200 = null as any;
-            }
-            return result200;
-            });
-        } else if (status === 500) {
-            return response.text().then((_responseText) => {
-            let result500: any = null;
-            let resultData500 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
-            result500 = ProblemDetails.fromJS(resultData500);
-            return throwException("Internal Server Error", status, _responseText, _headers, result500);
-            });
-        } else if (status !== 200 && status !== 204) {
-            return response.text().then((_responseText) => {
-            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
-            });
-        }
-        return Promise.resolve<TestCylinderQueueResponse[]>(null as any);
-    }
-
-    /**
-     * @param days (optional) 
-     * @return OK
-     */
-    testsUpcoming(days: number | undefined): Promise<TestCylinderQueueResponse[]> {
-        let url_ = this.baseUrl + "/api/tester-report/tests-upcoming?";
-        if (days === null)
-            throw new globalThis.Error("The parameter 'days' cannot be null.");
-        else if (days !== undefined)
-            url_ += "days=" + encodeURIComponent("" + days) + "&";
-        url_ = url_.replace(/[?&]$/, "");
-
-        let options_: RequestInit = {
-            method: "GET",
-            headers: {
-                "Accept": "application/json"
-            }
-        };
-
-        return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processTestsUpcoming(_response);
-        });
-    }
-
-    protected processTestsUpcoming(response: Response): Promise<TestCylinderQueueResponse[]> {
+    protected processTestQueue(response: Response): Promise<TestCylinderQueueResponse[]> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -721,6 +619,7 @@ export class TestCylinderQueueResponse implements ITestCylinderQueueResponse {
     testSetId?: number;
     testSetDayId?: number;
     dateDue?: Date;
+    dateTested?: Date | undefined;
 
     constructor(data?: ITestCylinderQueueResponse) {
         if (data) {
@@ -746,6 +645,7 @@ export class TestCylinderQueueResponse implements ITestCylinderQueueResponse {
             this.testSetId = _data["testSetId"];
             this.testSetDayId = _data["testSetDayId"];
             this.dateDue = _data["dateDue"] ? new Date(_data["dateDue"].toString()) : undefined as any;
+            this.dateTested = _data["dateTested"] ? new Date(_data["dateTested"].toString()) : undefined as any;
         }
     }
 
@@ -771,6 +671,7 @@ export class TestCylinderQueueResponse implements ITestCylinderQueueResponse {
         data["testSetId"] = this.testSetId;
         data["testSetDayId"] = this.testSetDayId;
         data["dateDue"] = this.dateDue ? this.dateDue.toISOString() : undefined as any;
+        data["dateTested"] = this.dateTested ? this.dateTested.toISOString() : undefined as any;
         return data;
     }
 }
@@ -789,6 +690,7 @@ export interface ITestCylinderQueueResponse {
     testSetId?: number;
     testSetDayId?: number;
     dateDue?: Date;
+    dateTested?: Date | undefined;
 }
 
 export class UntestedPlacementResponse implements IUntestedPlacementResponse {

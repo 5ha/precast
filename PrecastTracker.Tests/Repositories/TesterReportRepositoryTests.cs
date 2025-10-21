@@ -21,14 +21,15 @@ public class TesterReportRepositoryTests
         return context;
     }
 
-    #region GetTestsDuePastAsync Tests
+    #region GetTestQueueAsync Tests
 
     [Fact]
-    public async Task GetTestsDuePastAsync_ReturnsOnlyIncompleteTestsDuePast()
+    public async Task GetTestQueueAsync_ReturnsOverdueUntestedAndTodayAndFutureAllTests()
     {
-        // Verify that GetTestsDuePastAsync returns only tests that are:
-        // 1. Due before today (DateDue < today)
-        // 2. Not yet tested (DateTested = null)
+        // Verify that GetTestQueueAsync returns:
+        // 1. Overdue tests that are NOT tested (DateDue < today AND DateTested == null)
+        // 2. All tests due today (DateDue == today, regardless of DateTested)
+        // 3. All tests due in future up to endDate (DateDue > today AND DateDue <= endDate, regardless of DateTested)
 
         // Arrange
         using var context = CreateContext();
@@ -37,21 +38,25 @@ public class TesterReportRepositoryTests
         var testData = CreateTestDataSet(today);
         await SeedTestDataAsync(context, testData);
 
+        var endDate = today.AddDays(30);
+
         // Act
-        var result = await repository.GetTestsDuePastAsync();
+        var result = await repository.GetTestQueueAsync(endDate);
         var resultList = result.ToList();
 
         // Assert
-        Assert.Single(resultList); // Only one test due in the past and not tested
-        Assert.Equal("PAST-1-7", resultList[0].TestCylinderCode);
-        Assert.Equal(7, resultList[0].DayNum);
+        // Should include: 1 overdue untested + 2 today + 1 future = 4 total
+        Assert.Equal(4, resultList.Count);
+        Assert.Contains(resultList, t => t.TestCylinderCode == "PAST-1-7"); // Overdue, untested
+        Assert.Contains(resultList, t => t.TestCylinderCode == "TODAY-1-1"); // Today
+        Assert.Contains(resultList, t => t.TestCylinderCode == "TODAY-2-1"); // Today
+        Assert.Contains(resultList, t => t.TestCylinderCode == "FUTURE-1-28"); // Future within range
     }
 
     [Fact]
-    public async Task GetTestsDuePastAsync_ExcludesCompletedTests()
+    public async Task GetTestQueueAsync_ExcludesOverdueTestedTests()
     {
-        // Verify that tests that have been tested (DateTested is not null) are excluded,
-        // even if they are due in the past
+        // Verify that overdue tests that have been tested (DateTested is not null) are excluded
 
         // Arrange
         using var context = CreateContext();
@@ -64,115 +69,22 @@ public class TesterReportRepositoryTests
 
         await SeedTestDataAsync(context, testData);
 
+        var endDate = today.AddDays(30);
+
         // Act
-        var result = await repository.GetTestsDuePastAsync();
+        var result = await repository.GetTestQueueAsync(endDate);
 
         // Assert
-        Assert.Empty(result); // Should return no results since the past test has been tested
+        // Should NOT include the tested overdue test
+        Assert.DoesNotContain(result, t => t.TestCylinderCode == "PAST-1-7");
+        // Should still include today's tests and future tests
+        Assert.Equal(3, result.Count); // 2 today + 1 future
     }
 
     [Fact]
-    public async Task GetTestsDuePastAsync_ExcludesTestsDueToday()
+    public async Task GetTestQueueAsync_IncludesTodayTestedTests()
     {
-        // Verify that tests due today (DateDue == today) are not included in past tests
-
-        // Arrange
-        using var context = CreateContext();
-        var repository = new TesterReportRepository(context);
-        var today = DateTime.Today;
-        var testData = CreateTestDataSet(today);
-        await SeedTestDataAsync(context, testData);
-
-        // Act
-        var result = await repository.GetTestsDuePastAsync();
-
-        // Assert - Should not include today's tests
-        Assert.DoesNotContain(result, t => t.TestCylinderCode == "TODAY-1-1");
-        Assert.DoesNotContain(result, t => t.TestCylinderCode == "TODAY-2-1");
-    }
-
-    [Fact]
-    public async Task GetTestsDuePastAsync_ExcludesTestsDueFuture()
-    {
-        // Verify that tests due in the future (DateDue > today) are not included in past tests
-
-        // Arrange
-        using var context = CreateContext();
-        var repository = new TesterReportRepository(context);
-        var today = DateTime.Today;
-        var testData = CreateTestDataSet(today);
-        await SeedTestDataAsync(context, testData);
-
-        // Act
-        var result = await repository.GetTestsDuePastAsync();
-
-        // Assert - Should not include future tests
-        Assert.DoesNotContain(result, t => t.TestCylinderCode == "FUTURE-1-28");
-    }
-
-    [Fact]
-    public async Task GetTestsDuePastAsync_ReturnsCorrectProjectionData()
-    {
-        // Verify that all fields in TestCylinderQueueProjection are correctly populated
-        // from the joined entities (TestCylinder, TestSetDay, TestSet, Placement, etc.)
-
-        // Arrange
-        using var context = CreateContext();
-        var repository = new TesterReportRepository(context);
-        var today = DateTime.Today;
-        var testData = CreateTestDataSet(today);
-        await SeedTestDataAsync(context, testData);
-
-        // Act
-        var result = await repository.GetTestsDuePastAsync();
-        var projection = result.First();
-
-        // Assert - Verify all projection fields are correctly populated
-        Assert.Equal("PAST-1-7", projection.TestCylinderCode);
-        Assert.Equal("Oven1", projection.OvenId);
-        Assert.Equal(7, projection.DayNum);
-        Assert.Equal(today.AddDays(-14), projection.CastDate);
-        Assert.Equal(new TimeSpan(8, 0, 0), projection.CastTime);
-        Assert.Equal("25-001", projection.JobCode);
-        Assert.Equal("Test Job 1", projection.JobName);
-        Assert.Equal("MIX-1", projection.MixDesignCode);
-        Assert.Equal(3500, projection.RequiredPsi);
-        Assert.Equal("Walls", projection.PieceType);
-        Assert.Equal(today.AddDays(-7), projection.DateDue);
-    }
-
-    #endregion
-
-    #region GetTestsDueTodayAsync Tests
-
-    [Fact]
-    public async Task GetTestsDueTodayAsync_ReturnsOnlyTestsDueToday()
-    {
-        // Verify that GetTestsDueTodayAsync returns all tests due today,
-        // regardless of completion status
-
-        // Arrange
-        using var context = CreateContext();
-        var repository = new TesterReportRepository(context);
-        var today = DateTime.Today;
-        var testData = CreateTestDataSet(today);
-        await SeedTestDataAsync(context, testData);
-
-        // Act
-        var result = await repository.GetTestsDueTodayAsync();
-        var resultList = result.ToList();
-
-        // Assert
-        Assert.Equal(2, resultList.Count); // Two tests due today
-        Assert.Contains(resultList, t => t.TestCylinderCode == "TODAY-1-1");
-        Assert.Contains(resultList, t => t.TestCylinderCode == "TODAY-2-1");
-    }
-
-    [Fact]
-    public async Task GetTestsDueTodayAsync_IncludesCompletedTests()
-    {
-        // Verify that GetTestsDueTodayAsync includes both completed and incomplete tests.
-        // Unlike GetTestsDuePastAsync, today's report should show all tests regardless of status.
+        // Verify that tests due today are included even if they have been tested
 
         // Arrange
         using var context = CreateContext();
@@ -185,119 +97,21 @@ public class TesterReportRepositoryTests
 
         await SeedTestDataAsync(context, testData);
 
+        var endDate = today.AddDays(30);
+
         // Act
-        var result = await repository.GetTestsDueTodayAsync();
+        var result = await repository.GetTestQueueAsync(endDate);
         var resultList = result.ToList();
 
-        // Assert - Both tested and untested tests should be included
-        Assert.Equal(2, resultList.Count);
-        Assert.Contains(resultList, t => t.TestCylinderCode == "TODAY-1-1");
-        Assert.Contains(resultList, t => t.TestCylinderCode == "TODAY-2-1");
+        // Assert - Should include both tested and untested tests for today
+        Assert.Contains(resultList, t => t.TestCylinderCode == "TODAY-1-1" && t.DateTested == today);
+        Assert.Contains(resultList, t => t.TestCylinderCode == "TODAY-2-1" && t.DateTested == null);
     }
 
     [Fact]
-    public async Task GetTestsDueTodayAsync_ExcludesTestsDuePast()
+    public async Task GetTestQueueAsync_IncludesFutureTestedTests()
     {
-        // Verify that tests due before today (DateDue < today) are not included
-
-        // Arrange
-        using var context = CreateContext();
-        var repository = new TesterReportRepository(context);
-        var today = DateTime.Today;
-        var testData = CreateTestDataSet(today);
-        await SeedTestDataAsync(context, testData);
-
-        // Act
-        var result = await repository.GetTestsDueTodayAsync();
-
-        // Assert
-        Assert.DoesNotContain(result, t => t.TestCylinderCode == "PAST-1-7");
-    }
-
-    [Fact]
-    public async Task GetTestsDueTodayAsync_ExcludesTestsDueFuture()
-    {
-        // Verify that tests due after today (DateDue > today) are not included
-
-        // Arrange
-        using var context = CreateContext();
-        var repository = new TesterReportRepository(context);
-        var today = DateTime.Today;
-        var testData = CreateTestDataSet(today);
-        await SeedTestDataAsync(context, testData);
-
-        // Act
-        var result = await repository.GetTestsDueTodayAsync();
-
-        // Assert
-        Assert.DoesNotContain(result, t => t.TestCylinderCode == "FUTURE-1-28");
-    }
-
-    [Fact]
-    public async Task GetTestsDueTodayAsync_ReturnsCorrectProjectionData()
-    {
-        // Verify that all fields in TestCylinderQueueProjection are correctly populated
-        // from the joined entities for tests due today
-
-        // Arrange
-        using var context = CreateContext();
-        var repository = new TesterReportRepository(context);
-        var today = DateTime.Today;
-        var testData = CreateTestDataSet(today);
-        await SeedTestDataAsync(context, testData);
-
-        // Act
-        var result = await repository.GetTestsDueTodayAsync();
-        var projection = result.First(p => p.TestCylinderCode == "TODAY-1-1");
-
-        // Assert - Verify all projection fields are correctly populated
-        Assert.Equal("TODAY-1-1", projection.TestCylinderCode);
-        Assert.Equal("Oven2", projection.OvenId);
-        Assert.Equal(1, projection.DayNum);
-        Assert.Equal(today.AddDays(-1), projection.CastDate);
-        Assert.Equal(new TimeSpan(9, 30, 0), projection.CastTime);
-        Assert.Equal("25-002", projection.JobCode);
-        Assert.Equal("Test Job 2", projection.JobName);
-        Assert.Equal("MIX-2", projection.MixDesignCode);
-        Assert.Equal(4000, projection.RequiredPsi);
-        Assert.Equal("Tees", projection.PieceType);
-        Assert.Equal(today, projection.DateDue);
-    }
-
-    #endregion
-
-    #region GetTestsDueBetweenDatesAsync Tests
-
-    [Fact]
-    public async Task GetTestsDueBetweenDatesAsync_ReturnsTestsWithinDateRange()
-    {
-        // Verify that GetTestsDueBetweenDatesAsync returns only tests where
-        // DateDue is within the specified date range (inclusive)
-
-        // Arrange
-        using var context = CreateContext();
-        var repository = new TesterReportRepository(context);
-        var today = DateTime.Today;
-        var testData = CreateTestDataSet(today);
-        await SeedTestDataAsync(context, testData);
-
-        var startDate = today.AddDays(5);
-        var endDate = today.AddDays(35);
-
-        // Act
-        var result = await repository.GetTestsDueBetweenDatesAsync(startDate, endDate);
-        var resultList = result.ToList();
-
-        // Assert
-        Assert.Single(resultList); // Only the future test (28 days out)
-        Assert.Equal("FUTURE-1-28", resultList[0].TestCylinderCode);
-    }
-
-    [Fact]
-    public async Task GetTestsDueBetweenDatesAsync_IncludesCompletedTests()
-    {
-        // Verify that GetTestsDueBetweenDatesAsync includes both completed and incomplete tests.
-        // This method returns all tests in range regardless of completion status.
+        // Verify that future tests are included even if they have been tested
 
         // Arrange
         using var context = CreateContext();
@@ -306,127 +120,161 @@ public class TesterReportRepositoryTests
         var testData = CreateTestDataSet(today);
 
         // Mark future test as tested
-        testData.TestSetDayFuture.DateTested = today.AddDays(30);
+        testData.TestSetDayFuture.DateTested = today.AddDays(29);
 
         await SeedTestDataAsync(context, testData);
 
-        var startDate = today.AddDays(5);
-        var endDate = today.AddDays(35);
+        var endDate = today.AddDays(30);
 
         // Act
-        var result = await repository.GetTestsDueBetweenDatesAsync(startDate, endDate);
+        var result = await repository.GetTestQueueAsync(endDate);
+
+        // Assert - Should include tested future test
+        Assert.Contains(result, t => t.TestCylinderCode == "FUTURE-1-28" && t.DateTested != null);
+    }
+
+    [Fact]
+    public async Task GetTestQueueAsync_ExcludesTestsBeyondEndDate()
+    {
+        // Verify that tests with DateDue after endDate are not included
+
+        // Arrange
+        using var context = CreateContext();
+        var repository = new TesterReportRepository(context);
+        var today = DateTime.Today;
+        var testData = CreateTestDataSet(today);
+        await SeedTestDataAsync(context, testData);
+
+        // Set endDate before the future test
+        var endDate = today.AddDays(20);
+
+        // Act
+        var result = await repository.GetTestQueueAsync(endDate);
+
+        // Assert - Should not include future test that's 28 days out
+        Assert.DoesNotContain(result, t => t.TestCylinderCode == "FUTURE-1-28");
+        // Should include overdue + today's tests
+        Assert.Equal(3, result.Count); // 1 overdue + 2 today
+    }
+
+    [Fact]
+    public async Task GetTestQueueAsync_IncludesTestsOnEndDateBoundary()
+    {
+        // Verify that tests with DateDue exactly equal to endDate are included
+
+        // Arrange
+        using var context = CreateContext();
+        var repository = new TesterReportRepository(context);
+        var today = DateTime.Today;
+        var testData = CreateTestDataSet(today);
+        await SeedTestDataAsync(context, testData);
+
+        // Set endDate to exactly when future test is due
+        var endDate = today.AddDays(28);
+
+        // Act
+        var result = await repository.GetTestQueueAsync(endDate);
+
+        // Assert - Should include test due on boundary
+        Assert.Contains(result, t => t.TestCylinderCode == "FUTURE-1-28");
+    }
+
+    [Fact]
+    public async Task GetTestQueueAsync_ReturnsSortedByDateDue()
+    {
+        // Verify that results are sorted by DateDue ascending (most urgent first)
+
+        // Arrange
+        using var context = CreateContext();
+        var repository = new TesterReportRepository(context);
+        var today = DateTime.Today;
+        var testData = CreateTestDataSet(today);
+        await SeedTestDataAsync(context, testData);
+
+        var endDate = today.AddDays(30);
+
+        // Act
+        var result = await repository.GetTestQueueAsync(endDate);
         var resultList = result.ToList();
 
-        // Assert - Should include tested test
-        Assert.Single(resultList);
+        // Assert - Verify sort order
+        Assert.Equal("PAST-1-7", resultList[0].TestCylinderCode); // Overdue (today -7)
+        Assert.True(resultList[1].TestCylinderCode.StartsWith("TODAY")); // Today
+        Assert.True(resultList[2].TestCylinderCode.StartsWith("TODAY")); // Today
+        Assert.Equal("FUTURE-1-28", resultList[3].TestCylinderCode); // Future (today +28)
     }
 
     [Fact]
-    public async Task GetTestsDueBetweenDatesAsync_ExcludesTestsOutsideRange()
+    public async Task GetTestQueueAsync_ReturnsCorrectProjectionDataIncludingDateTested()
     {
-        // Verify that tests with DateDue outside the specified range are not included
+        // Verify that all fields in TestCylinderQueueProjection are correctly populated,
+        // including the new DateTested field
 
         // Arrange
         using var context = CreateContext();
         var repository = new TesterReportRepository(context);
         var today = DateTime.Today;
         var testData = CreateTestDataSet(today);
+
+        // Mark one test as tested
+        var testedDate = today.AddDays(-1);
+        testData.TestSetDayToday1.DateTested = testedDate;
+
         await SeedTestDataAsync(context, testData);
 
-        var startDate = today.AddDays(5);
-        var endDate = today.AddDays(35);
+        var endDate = today.AddDays(30);
 
         // Act
-        var result = await repository.GetTestsDueBetweenDatesAsync(startDate, endDate);
+        var result = await repository.GetTestQueueAsync(endDate);
+        var testedProjection = result.First(p => p.TestCylinderCode == "TODAY-1-1");
+        var untestedProjection = result.First(p => p.TestCylinderCode == "PAST-1-7");
 
-        // Assert - Should not include today's tests or past tests
-        Assert.DoesNotContain(result, t => t.TestCylinderCode == "TODAY-1-1");
-        Assert.DoesNotContain(result, t => t.TestCylinderCode == "TODAY-2-1");
-        Assert.DoesNotContain(result, t => t.TestCylinderCode == "PAST-1-7");
+        // Assert - Verify tested projection includes DateTested
+        Assert.Equal("TODAY-1-1", testedProjection.TestCylinderCode);
+        Assert.Equal(testedDate, testedProjection.DateTested);
+        Assert.Equal("Oven2", testedProjection.OvenId);
+        Assert.Equal(1, testedProjection.DayNum);
+        Assert.Equal(today.AddDays(-1), testedProjection.CastDate);
+        Assert.Equal(new TimeSpan(9, 30, 0), testedProjection.CastTime);
+        Assert.Equal("25-002", testedProjection.JobCode);
+        Assert.Equal("Test Job 2", testedProjection.JobName);
+        Assert.Equal("MIX-2", testedProjection.MixDesignCode);
+        Assert.Equal(4000, testedProjection.RequiredPsi);
+        Assert.Equal("Tees", testedProjection.PieceType);
+        Assert.Equal(today, testedProjection.DateDue);
+
+        // Assert - Verify untested projection has null DateTested
+        Assert.Equal("PAST-1-7", untestedProjection.TestCylinderCode);
+        Assert.Null(untestedProjection.DateTested);
     }
 
     [Fact]
-    public async Task GetTestsDueBetweenDatesAsync_IncludesTestsOnBoundaryDates()
+    public async Task GetTestQueueAsync_ReturnsEmptyWhenNoTestsInRange()
     {
-        // Verify that the date range is inclusive on both boundaries.
-        // Tests with DateDue exactly equal to startDate or endDate should be included.
+        // Verify that an empty list is returned when no tests match the criteria
 
         // Arrange
         using var context = CreateContext();
         var repository = new TesterReportRepository(context);
         var today = DateTime.Today;
         var testData = CreateTestDataSet(today);
+
+        // Mark all tests as tested
+        testData.TestSetDayPast.DateTested = today.AddDays(-6);
+        testData.TestSetDayToday1.DateTested = today;
+        testData.TestSetDayToday2.DateTested = today;
+        testData.TestSetDayFuture.DateTested = today.AddDays(29);
+
         await SeedTestDataAsync(context, testData);
 
-        // Test boundary: include test due exactly on start date and end date
-        var startDate = today; // Today's tests should be included
-        var endDate = today; // Only today's tests
+        // Set endDate before all future tests
+        var endDate = today.AddDays(-1);
 
         // Act
-        var result = await repository.GetTestsDueBetweenDatesAsync(startDate, endDate);
-        var resultList = result.ToList();
+        var result = await repository.GetTestQueueAsync(endDate);
 
         // Assert
-        Assert.Equal(2, resultList.Count);
-        Assert.Contains(resultList, t => t.TestCylinderCode == "TODAY-1-1");
-        Assert.Contains(resultList, t => t.TestCylinderCode == "TODAY-2-1");
-    }
-
-    [Fact]
-    public async Task GetTestsDueBetweenDatesAsync_ReturnsCorrectProjectionData()
-    {
-        // Verify that all fields in TestCylinderQueueProjection are correctly populated
-        // from the joined entities for tests in the date range
-
-        // Arrange
-        using var context = CreateContext();
-        var repository = new TesterReportRepository(context);
-        var today = DateTime.Today;
-        var testData = CreateTestDataSet(today);
-        await SeedTestDataAsync(context, testData);
-
-        var startDate = today.AddDays(5);
-        var endDate = today.AddDays(35);
-
-        // Act
-        var result = await repository.GetTestsDueBetweenDatesAsync(startDate, endDate);
-        var projection = result.First();
-
-        // Assert - Verify all projection fields are correctly populated
-        Assert.Equal("FUTURE-1-28", projection.TestCylinderCode);
-        Assert.Equal("Oven3", projection.OvenId);
-        Assert.Equal(28, projection.DayNum);
-        Assert.Equal(today, projection.CastDate);
-        Assert.Equal(new TimeSpan(10, 15, 0), projection.CastTime);
-        Assert.Equal("25-003", projection.JobCode);
-        Assert.Equal("Test Job 3", projection.JobName);
-        Assert.Equal("MIX-3", projection.MixDesignCode);
-        Assert.Equal(5000, projection.RequiredPsi);
-        Assert.Equal("Slabs", projection.PieceType);
-        Assert.Equal(today.AddDays(28), projection.DateDue);
-    }
-
-    [Fact]
-    public async Task GetTestsDueBetweenDatesAsync_ReturnsEmptyWhenNoTestsInRange()
-    {
-        // Verify that an empty list is returned when no tests have DateDue
-        // within the specified date range
-
-        // Arrange
-        using var context = CreateContext();
-        var repository = new TesterReportRepository(context);
-        var today = DateTime.Today;
-        var testData = CreateTestDataSet(today);
-        await SeedTestDataAsync(context, testData);
-
-        var startDate = today.AddDays(50);
-        var endDate = today.AddDays(60);
-
-        // Act
-        var result = await repository.GetTestsDueBetweenDatesAsync(startDate, endDate);
-
-        // Assert
-        Assert.Empty(result);
+        Assert.Empty(result); // All tests either tested (past) or beyond endDate
     }
 
     #endregion

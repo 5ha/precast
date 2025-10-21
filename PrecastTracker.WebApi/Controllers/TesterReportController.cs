@@ -16,30 +16,12 @@ public class TesterReportController : BaseController<TesterReportController>
         _business = business;
     }
 
-    [HttpGet("tests-due-today")]
+    [HttpGet("test-queue")]
     [ProducesResponseType(typeof(IEnumerable<TestCylinderQueueResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> GetTestsDueToday()
+    public async Task<IActionResult> GetTestQueue([FromQuery] DateTime endDate)
     {
-        var result = await _business.GetTestsDueTodayAsync();
-        return HandleBusinessResult(result);
-    }
-
-    [HttpGet("tests-overdue")]
-    [ProducesResponseType(typeof(IEnumerable<TestCylinderQueueResponse>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> GetTestsOverdue()
-    {
-        var result = await _business.GetTestsOverdueAsync();
-        return HandleBusinessResult(result);
-    }
-
-    [HttpGet("tests-upcoming")]
-    [ProducesResponseType(typeof(IEnumerable<TestCylinderQueueResponse>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> GetTestsUpcoming([FromQuery] int days = 7)
-    {
-        var result = await _business.GetTestsUpcomingAsync(days);
+        var result = await _business.GetTestQueueAsync(endDate);
         return HandleBusinessResult(result);
     }
 
