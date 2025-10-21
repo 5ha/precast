@@ -64,7 +64,10 @@ class Program
         Console.WriteLine("Available Scenarios:");
         Console.WriteLine();
         Console.WriteLine("  TypicalProductionDay");
-        Console.WriteLine("    Three placements with tests due today (1-day, 7-day, and 28-day tests).");
+        Console.WriteLine("    Eight placements spanning different timelines:");
+        Console.WriteLine("      - 3 placements with tests overdue by 1 day (1-day, 7-day, and 28-day tests)");
+        Console.WriteLine("      - 3 placements with tests due today (1-day, 7-day, and 28-day tests)");
+        Console.WriteLine("      - 2 placements with tests due tomorrow (1-day and 7-day tests)");
         Console.WriteLine();
         Console.WriteLine("  OverdueTests");
         Console.WriteLine("    Placements with overdue test cylinders to verify queue and notification features.");
@@ -131,158 +134,423 @@ class Program
     {
         var today = DateTime.Today;
 
-        // Placement from 7 days ago - will have a 7-day test due today
+        // Placement from 8 days ago - will have a 7-day test due yesterday (OVERDUE by 1 day)
         var placement1 = HighLevelEntityHelpers.CreatePlacement(
             context: _context,
             jobCode: "25-020",
             jobName: "Woodbury High School",
             bedId: 1,
             mixDesignCode: "824.1",
-            productionDate: today.AddDays(-7),
+            productionDate: today.AddDays(-8),
             pieceType: "Walls",
             startTime: new TimeSpan(8, 30, 0),
             volume: 12.5m,
             ovenId: "A1"
         );
 
-        // Placement from 1 day ago - will have a 1-day test due today
+        // Placement from 2 days ago - will have a 1-day test due yesterday (OVERDUE by 1 day)
         var placement2 = HighLevelEntityHelpers.CreatePlacement(
             context: _context,
             jobCode: "25-020",
             jobName: "Woodbury High School",
             bedId: 1,
             mixDesignCode: "824.1",
-            productionDate: today.AddDays(-1),
+            productionDate: today.AddDays(-2),
             pieceType: "Tees",
             startTime: new TimeSpan(10, 15, 0),
             volume: 8.3m,
             ovenId: "B2"
         );
 
-        // Placement from 28 days ago - will have a 28-day test due today
+        // Placement from 29 days ago - will have a 28-day test due yesterday (OVERDUE by 1 day)
         var placement3 = HighLevelEntityHelpers.CreatePlacement(
             context: _context,
             jobCode: "25-015",
             jobName: "Downtown Parking Ramp",
             bedId: 2,
             mixDesignCode: "2515.11",
-            productionDate: today.AddDays(-28),
+            productionDate: today.AddDays(-29),
             pieceType: "Slabs",
             startTime: new TimeSpan(9, 0, 0),
             volume: 15.0m,
             ovenId: null
         );
 
-        // Create test sets for placement 1 (poured 7 days ago)
+        // Placement from 6 days ago - will have a 7-day test due tomorrow (NOT overdue)
+        var placement4 = HighLevelEntityHelpers.CreatePlacement(
+            context: _context,
+            jobCode: "25-018",
+            jobName: "Library Expansion",
+            bedId: 3,
+            mixDesignCode: "824.1",
+            productionDate: today.AddDays(-6),
+            pieceType: "Columns",
+            startTime: new TimeSpan(7, 15, 0),
+            volume: 9.8m,
+            ovenId: "C1"
+        );
+
+        // Placement from today - will have a 1-day test due tomorrow (NOT overdue)
+        var placement5 = HighLevelEntityHelpers.CreatePlacement(
+            context: _context,
+            jobCode: "25-018",
+            jobName: "Library Expansion",
+            bedId: 3,
+            mixDesignCode: "824.1",
+            productionDate: today,
+            pieceType: "Beams",
+            startTime: new TimeSpan(13, 45, 0),
+            volume: 11.2m,
+            ovenId: "C2"
+        );
+
+        // Placement from 7 days ago - will have a 7-day test due today
+        var placement6 = HighLevelEntityHelpers.CreatePlacement(
+            context: _context,
+            jobCode: "25-022",
+            jobName: "Community Center",
+            bedId: 4,
+            mixDesignCode: "1200.3",
+            productionDate: today.AddDays(-7),
+            pieceType: "Walls",
+            startTime: new TimeSpan(8, 0, 0),
+            volume: 14.5m,
+            ovenId: "D1"
+        );
+
+        // Placement from 1 day ago - will have a 1-day test due today
+        var placement7 = HighLevelEntityHelpers.CreatePlacement(
+            context: _context,
+            jobCode: "25-022",
+            jobName: "Community Center",
+            bedId: 4,
+            mixDesignCode: "1200.3",
+            productionDate: today.AddDays(-1),
+            pieceType: "Tees",
+            startTime: new TimeSpan(10, 30, 0),
+            volume: 7.8m,
+            ovenId: "D2"
+        );
+
+        // Placement from 28 days ago - will have a 28-day test due today
+        var placement8 = HighLevelEntityHelpers.CreatePlacement(
+            context: _context,
+            jobCode: "25-019",
+            jobName: "Retail Complex",
+            bedId: 5,
+            mixDesignCode: "3500.5",
+            productionDate: today.AddDays(-28),
+            pieceType: "Slabs",
+            startTime: new TimeSpan(9, 15, 0),
+            volume: 16.0m,
+            ovenId: null
+        );
+
+        // Create test sets for placement 1 (poured 8 days ago - 7-day test OVERDUE by 1 day)
         var testSet1 = HighLevelEntityHelpers.CreateTestSet(_context, placement1.PlacementId);
 
-        // 1-day test was completed 6 days ago
+        // 1-day test was completed 7 days ago
         var testSetDay1_Day1 = HighLevelEntityHelpers.CreateTestSetDay(
             context: _context,
             testSetId: testSet1.TestSetId,
             dayNum: 1,
-            dateDue: today.AddDays(-6),
-            dateTested: today.AddDays(-6),
+            dateDue: today.AddDays(-7),
+            dateTested: today.AddDays(-7),
             comments: "Normal strength"
         );
         HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay1_Day1.TestSetDayId, "12345-1-25-020", 3250);
         HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay1_Day1.TestSetDayId, "12345-2-25-020", 3180);
 
-        // 7-day test is due today (not yet tested)
+        // 7-day test was due yesterday (OVERDUE by 1 day, not yet tested)
         var testSetDay1_Day7 = HighLevelEntityHelpers.CreateTestSetDay(
             context: _context,
             testSetId: testSet1.TestSetId,
             dayNum: 7,
-            dateDue: today,
+            dateDue: today.AddDays(-1),
             dateTested: null,
             comments: null
         );
         HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay1_Day7.TestSetDayId, "12345-7-25-020", null);
         HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay1_Day7.TestSetDayId, "12345-8-25-020", null);
 
-        // 28-day test is due in 21 days
+        // 28-day test is due in 20 days
         var testSetDay1_Day28 = HighLevelEntityHelpers.CreateTestSetDay(
             context: _context,
             testSetId: testSet1.TestSetId,
             dayNum: 28,
-            dateDue: today.AddDays(21),
+            dateDue: today.AddDays(20),
             dateTested: null,
             comments: null
         );
         HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay1_Day28.TestSetDayId, "12345-28-25-020", null);
         HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay1_Day28.TestSetDayId, "12345-29-25-020", null);
 
-        // Create test sets for placement 2 (poured 1 day ago)
+        // Create test sets for placement 2 (poured 2 days ago - 1-day test OVERDUE by 1 day)
         var testSet2 = HighLevelEntityHelpers.CreateTestSet(_context, placement2.PlacementId);
 
-        // 1-day test is due today (not yet tested)
+        // 1-day test was due yesterday (OVERDUE by 1 day, not yet tested)
         var testSetDay2_Day1 = HighLevelEntityHelpers.CreateTestSetDay(
             context: _context,
             testSetId: testSet2.TestSetId,
             dayNum: 1,
-            dateDue: today,
+            dateDue: today.AddDays(-1),
             dateTested: null
         );
         HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay2_Day1.TestSetDayId, "12346-1-25-020", null);
         HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay2_Day1.TestSetDayId, "12346-2-25-020", null);
 
-        // 7-day test is due in 6 days
+        // 7-day test is due in 5 days
         var testSetDay2_Day7 = HighLevelEntityHelpers.CreateTestSetDay(
             context: _context,
             testSetId: testSet2.TestSetId,
             dayNum: 7,
-            dateDue: today.AddDays(6)
+            dateDue: today.AddDays(5)
         );
         HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay2_Day7.TestSetDayId, "12346-7-25-020", null);
         HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay2_Day7.TestSetDayId, "12346-8-25-020", null);
 
-        // 28-day test is due in 27 days
+        // 28-day test is due in 26 days
         var testSetDay2_Day28 = HighLevelEntityHelpers.CreateTestSetDay(
             context: _context,
             testSetId: testSet2.TestSetId,
             dayNum: 28,
-            dateDue: today.AddDays(27)
+            dateDue: today.AddDays(26)
         );
         HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay2_Day28.TestSetDayId, "12346-28-25-020", null);
         HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay2_Day28.TestSetDayId, "12346-29-25-020", null);
 
-        // Create test sets for placement 3 (poured 28 days ago)
+        // Create test sets for placement 3 (poured 29 days ago - 28-day test OVERDUE by 1 day)
         var testSet3 = HighLevelEntityHelpers.CreateTestSet(_context, placement3.PlacementId);
 
-        // 1-day test was completed 27 days ago
+        // 1-day test was completed 28 days ago
         var testSetDay3_Day1 = HighLevelEntityHelpers.CreateTestSetDay(
             context: _context,
             testSetId: testSet3.TestSetId,
             dayNum: 1,
-            dateDue: today.AddDays(-27),
-            dateTested: today.AddDays(-27),
+            dateDue: today.AddDays(-28),
+            dateTested: today.AddDays(-28),
             comments: "Good strength"
         );
         HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay3_Day1.TestSetDayId, "12347-1-25-015", 4200);
         HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay3_Day1.TestSetDayId, "12347-2-25-015", 4150);
 
-        // 7-day test was completed 21 days ago
+        // 7-day test was completed 22 days ago
         var testSetDay3_Day7 = HighLevelEntityHelpers.CreateTestSetDay(
             context: _context,
             testSetId: testSet3.TestSetId,
             dayNum: 7,
-            dateDue: today.AddDays(-21),
-            dateTested: today.AddDays(-21),
+            dateDue: today.AddDays(-22),
+            dateTested: today.AddDays(-22),
             comments: "Excellent results"
         );
         HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay3_Day7.TestSetDayId, "12347-7-25-015", 6100);
         HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay3_Day7.TestSetDayId, "12347-8-25-015", 6050);
 
-        // 28-day test is due today (not yet tested)
+        // 28-day test was due yesterday (OVERDUE by 1 day, not yet tested)
         var testSetDay3_Day28 = HighLevelEntityHelpers.CreateTestSetDay(
             context: _context,
             testSetId: testSet3.TestSetId,
             dayNum: 28,
-            dateDue: today,
+            dateDue: today.AddDays(-1),
             dateTested: null
         );
         HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay3_Day28.TestSetDayId, "12347-28-25-015", null);
         HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay3_Day28.TestSetDayId, "12347-29-25-015", null);
+
+        // Create test sets for placement 4 (poured 6 days ago - 7-day test due tomorrow)
+        var testSet4 = HighLevelEntityHelpers.CreateTestSet(_context, placement4.PlacementId);
+
+        // 1-day test was completed 5 days ago
+        var testSetDay4_Day1 = HighLevelEntityHelpers.CreateTestSetDay(
+            context: _context,
+            testSetId: testSet4.TestSetId,
+            dayNum: 1,
+            dateDue: today.AddDays(-5),
+            dateTested: today.AddDays(-5),
+            comments: "Good results"
+        );
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay4_Day1.TestSetDayId, "12348-1-25-018", 3350);
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay4_Day1.TestSetDayId, "12348-2-25-018", 3280);
+
+        // 7-day test is due tomorrow (not yet tested)
+        var testSetDay4_Day7 = HighLevelEntityHelpers.CreateTestSetDay(
+            context: _context,
+            testSetId: testSet4.TestSetId,
+            dayNum: 7,
+            dateDue: today.AddDays(1),
+            dateTested: null,
+            comments: null
+        );
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay4_Day7.TestSetDayId, "12348-7-25-018", null);
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay4_Day7.TestSetDayId, "12348-8-25-018", null);
+
+        // 28-day test is due in 22 days
+        var testSetDay4_Day28 = HighLevelEntityHelpers.CreateTestSetDay(
+            context: _context,
+            testSetId: testSet4.TestSetId,
+            dayNum: 28,
+            dateDue: today.AddDays(22),
+            dateTested: null,
+            comments: null
+        );
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay4_Day28.TestSetDayId, "12348-28-25-018", null);
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay4_Day28.TestSetDayId, "12348-29-25-018", null);
+
+        // Create test sets for placement 5 (poured today - 1-day test due tomorrow)
+        var testSet5 = HighLevelEntityHelpers.CreateTestSet(_context, placement5.PlacementId);
+
+        // 1-day test is due tomorrow (not yet tested)
+        var testSetDay5_Day1 = HighLevelEntityHelpers.CreateTestSetDay(
+            context: _context,
+            testSetId: testSet5.TestSetId,
+            dayNum: 1,
+            dateDue: today.AddDays(1),
+            dateTested: null,
+            comments: null
+        );
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay5_Day1.TestSetDayId, "12349-1-25-018", null);
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay5_Day1.TestSetDayId, "12349-2-25-018", null);
+
+        // 7-day test is due in 7 days
+        var testSetDay5_Day7 = HighLevelEntityHelpers.CreateTestSetDay(
+            context: _context,
+            testSetId: testSet5.TestSetId,
+            dayNum: 7,
+            dateDue: today.AddDays(7),
+            dateTested: null,
+            comments: null
+        );
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay5_Day7.TestSetDayId, "12349-7-25-018", null);
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay5_Day7.TestSetDayId, "12349-8-25-018", null);
+
+        // 28-day test is due in 28 days
+        var testSetDay5_Day28 = HighLevelEntityHelpers.CreateTestSetDay(
+            context: _context,
+            testSetId: testSet5.TestSetId,
+            dayNum: 28,
+            dateDue: today.AddDays(28),
+            dateTested: null,
+            comments: null
+        );
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay5_Day28.TestSetDayId, "12349-28-25-018", null);
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay5_Day28.TestSetDayId, "12349-29-25-018", null);
+
+        // Create test sets for placement 6 (poured 7 days ago - 7-day test due today)
+        var testSet6 = HighLevelEntityHelpers.CreateTestSet(_context, placement6.PlacementId);
+
+        // 1-day test was completed 6 days ago
+        var testSetDay6_Day1 = HighLevelEntityHelpers.CreateTestSetDay(
+            context: _context,
+            testSetId: testSet6.TestSetId,
+            dayNum: 1,
+            dateDue: today.AddDays(-6),
+            dateTested: today.AddDays(-6),
+            comments: "Normal strength"
+        );
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay6_Day1.TestSetDayId, "12350-1-25-022", 3200);
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay6_Day1.TestSetDayId, "12350-2-25-022", 3150);
+
+        // 7-day test is due today (not yet tested)
+        var testSetDay6_Day7 = HighLevelEntityHelpers.CreateTestSetDay(
+            context: _context,
+            testSetId: testSet6.TestSetId,
+            dayNum: 7,
+            dateDue: today,
+            dateTested: null,
+            comments: null
+        );
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay6_Day7.TestSetDayId, "12350-7-25-022", null);
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay6_Day7.TestSetDayId, "12350-8-25-022", null);
+
+        // 28-day test is due in 21 days
+        var testSetDay6_Day28 = HighLevelEntityHelpers.CreateTestSetDay(
+            context: _context,
+            testSetId: testSet6.TestSetId,
+            dayNum: 28,
+            dateDue: today.AddDays(21),
+            dateTested: null,
+            comments: null
+        );
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay6_Day28.TestSetDayId, "12350-28-25-022", null);
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay6_Day28.TestSetDayId, "12350-29-25-022", null);
+
+        // Create test sets for placement 7 (poured 1 day ago - 1-day test due today)
+        var testSet7 = HighLevelEntityHelpers.CreateTestSet(_context, placement7.PlacementId);
+
+        // 1-day test is due today (not yet tested)
+        var testSetDay7_Day1 = HighLevelEntityHelpers.CreateTestSetDay(
+            context: _context,
+            testSetId: testSet7.TestSetId,
+            dayNum: 1,
+            dateDue: today,
+            dateTested: null,
+            comments: null
+        );
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay7_Day1.TestSetDayId, "12351-1-25-022", null);
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay7_Day1.TestSetDayId, "12351-2-25-022", null);
+
+        // 7-day test is due in 6 days
+        var testSetDay7_Day7 = HighLevelEntityHelpers.CreateTestSetDay(
+            context: _context,
+            testSetId: testSet7.TestSetId,
+            dayNum: 7,
+            dateDue: today.AddDays(6),
+            dateTested: null,
+            comments: null
+        );
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay7_Day7.TestSetDayId, "12351-7-25-022", null);
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay7_Day7.TestSetDayId, "12351-8-25-022", null);
+
+        // 28-day test is due in 27 days
+        var testSetDay7_Day28 = HighLevelEntityHelpers.CreateTestSetDay(
+            context: _context,
+            testSetId: testSet7.TestSetId,
+            dayNum: 28,
+            dateDue: today.AddDays(27),
+            dateTested: null,
+            comments: null
+        );
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay7_Day28.TestSetDayId, "12351-28-25-022", null);
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay7_Day28.TestSetDayId, "12351-29-25-022", null);
+
+        // Create test sets for placement 8 (poured 28 days ago - 28-day test due today)
+        var testSet8 = HighLevelEntityHelpers.CreateTestSet(_context, placement8.PlacementId);
+
+        // 1-day test was completed 27 days ago
+        var testSetDay8_Day1 = HighLevelEntityHelpers.CreateTestSetDay(
+            context: _context,
+            testSetId: testSet8.TestSetId,
+            dayNum: 1,
+            dateDue: today.AddDays(-27),
+            dateTested: today.AddDays(-27),
+            comments: "Good strength"
+        );
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay8_Day1.TestSetDayId, "12352-1-25-019", 4100);
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay8_Day1.TestSetDayId, "12352-2-25-019", 4050);
+
+        // 7-day test was completed 21 days ago
+        var testSetDay8_Day7 = HighLevelEntityHelpers.CreateTestSetDay(
+            context: _context,
+            testSetId: testSet8.TestSetId,
+            dayNum: 7,
+            dateDue: today.AddDays(-21),
+            dateTested: today.AddDays(-21),
+            comments: "Strong results"
+        );
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay8_Day7.TestSetDayId, "12352-7-25-019", 5900);
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay8_Day7.TestSetDayId, "12352-8-25-019", 5850);
+
+        // 28-day test is due today (not yet tested)
+        var testSetDay8_Day28 = HighLevelEntityHelpers.CreateTestSetDay(
+            context: _context,
+            testSetId: testSet8.TestSetId,
+            dayNum: 28,
+            dateDue: today,
+            dateTested: null,
+            comments: null
+        );
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay8_Day28.TestSetDayId, "12352-28-25-019", null);
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDay8_Day28.TestSetDayId, "12352-29-25-019", null);
     }
 
     private static void SeedOverdueTests()
