@@ -1,12 +1,17 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { ApiClient, TestCylinderQueueResponse, SwaggerException } from '$lib/api/generated/api-client';
+	import TestSetDayModal from './TestSetDayModal.svelte';
 
 	let tests = $state<TestCylinderQueueResponse[]>([]);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
+	let selectedTestSetDayId = $state<number | null>(null);
+	let isModalOpen = $state(false);
 
-	onMount(async () => {
+	async function loadTests() {
+		loading = true;
+		error = null;
 		try {
 			const client = new ApiClient();
 			tests = await client.testsDueToday();
@@ -19,7 +24,28 @@
 		} finally {
 			loading = false;
 		}
+	}
+
+	onMount(async () => {
+		await loadTests();
 	});
+
+	function handleRowClick(testSetDayId: number | undefined) {
+		if (testSetDayId) {
+			selectedTestSetDayId = testSetDayId;
+			isModalOpen = true;
+		}
+	}
+
+	function handleModalClose() {
+		isModalOpen = false;
+		selectedTestSetDayId = null;
+	}
+
+	async function handleModalSuccess() {
+		// Refresh the test list after successful save
+		await loadTests();
+	}
 
 	function formatDate(date: Date | undefined): string {
 		if (!date) return '';
@@ -56,7 +82,7 @@
 			</thead>
 			<tbody>
 				{#each tests as test}
-					<tr>
+					<tr class="clickable" onclick={() => handleRowClick(test.testSetDayId)}>
 						<td>{test.testCylinderCode}</td>
 						<td>{formatCylinder(test.dayNum)}</td>
 						<td>{test.jobCode} - {test.jobName}</td>
@@ -70,6 +96,13 @@
 		</table>
 	{/if}
 </div>
+
+<TestSetDayModal
+	testSetDayId={selectedTestSetDayId}
+	open={isModalOpen}
+	onClose={handleModalClose}
+	onSuccess={handleModalSuccess}
+/>
 
 <style>
 	.todays-test-queue {
@@ -99,6 +132,14 @@
 
 	tbody tr:hover {
 		background-color: #f9f9f9;
+	}
+
+	tbody tr.clickable {
+		cursor: pointer;
+	}
+
+	tbody tr.clickable:hover {
+		background-color: #e3f2fd;
 	}
 
 	.error {

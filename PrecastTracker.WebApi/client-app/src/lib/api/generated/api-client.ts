@@ -296,6 +296,211 @@ export class ApiClient {
         }
         return Promise.resolve<UntestedPlacementResponse[]>(null as any);
     }
+
+    /**
+     * @return OK
+     */
+    testSetDayGET(testSetDayId: number): Promise<GetTestSetDayDetailsResponse> {
+        let url_ = this.baseUrl + "/api/tester-report/test-set-day/{testSetDayId}";
+        if (testSetDayId === undefined || testSetDayId === null)
+            throw new globalThis.Error("The parameter 'testSetDayId' must be defined.");
+        url_ = url_.replace("{testSetDayId}", encodeURIComponent("" + testSetDayId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processTestSetDayGET(_response);
+        });
+    }
+
+    protected processTestSetDayGET(response: Response): Promise<GetTestSetDayDetailsResponse> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result200 = GetTestSetDayDetailsResponse.fromJS(resultData200);
+            return result200;
+            });
+        } else if (status === 404) {
+            return response.text().then((_responseText) => {
+            let result404: any = null;
+            let resultData404 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result404 = ProblemDetails.fromJS(resultData404);
+            return throwException("Not Found", status, _responseText, _headers, result404);
+            });
+        } else if (status === 500) {
+            return response.text().then((_responseText) => {
+            let result500: any = null;
+            let resultData500 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result500 = ProblemDetails.fromJS(resultData500);
+            return throwException("Internal Server Error", status, _responseText, _headers, result500);
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<GetTestSetDayDetailsResponse>(null as any);
+    }
+
+    /**
+     * @param body (optional) 
+     * @return OK
+     */
+    testSetDayPOST(body: SaveTestSetDayDataRequest | undefined): Promise<void> {
+        let url_ = this.baseUrl + "/api/tester-report/test-set-day";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(body);
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processTestSetDayPOST(_response);
+        });
+    }
+
+    protected processTestSetDayPOST(response: Response): Promise<void> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            return;
+            });
+        } else if (status === 400) {
+            return response.text().then((_responseText) => {
+            let result400: any = null;
+            let resultData400 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result400 = ProblemDetails.fromJS(resultData400);
+            return throwException("Bad Request", status, _responseText, _headers, result400);
+            });
+        } else if (status === 404) {
+            return response.text().then((_responseText) => {
+            let result404: any = null;
+            let resultData404 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result404 = ProblemDetails.fromJS(resultData404);
+            return throwException("Not Found", status, _responseText, _headers, result404);
+            });
+        } else if (status === 500) {
+            return response.text().then((_responseText) => {
+            let result500: any = null;
+            let resultData500 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result500 = ProblemDetails.fromJS(resultData500);
+            return throwException("Internal Server Error", status, _responseText, _headers, result500);
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<void>(null as any);
+    }
+}
+
+export class GetTestSetDayDetailsResponse implements IGetTestSetDayDetailsResponse {
+    testSetDayId?: number;
+    dayNum?: number;
+    comments?: string | undefined;
+    dateDue?: Date;
+    dateTested?: Date | undefined;
+    jobCode?: string | undefined;
+    jobName?: string | undefined;
+    mixDesignCode?: string | undefined;
+    requiredPsi?: number;
+    pieceType?: string | undefined;
+    castDate?: Date;
+    castTime?: string | undefined;
+    testCylinders?: TestCylinderBreakDto[] | undefined;
+
+    constructor(data?: IGetTestSetDayDetailsResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.testSetDayId = _data["testSetDayId"];
+            this.dayNum = _data["dayNum"];
+            this.comments = _data["comments"];
+            this.dateDue = _data["dateDue"] ? new Date(_data["dateDue"].toString()) : undefined as any;
+            this.dateTested = _data["dateTested"] ? new Date(_data["dateTested"].toString()) : undefined as any;
+            this.jobCode = _data["jobCode"];
+            this.jobName = _data["jobName"];
+            this.mixDesignCode = _data["mixDesignCode"];
+            this.requiredPsi = _data["requiredPsi"];
+            this.pieceType = _data["pieceType"];
+            this.castDate = _data["castDate"] ? new Date(_data["castDate"].toString()) : undefined as any;
+            this.castTime = _data["castTime"];
+            if (Array.isArray(_data["testCylinders"])) {
+                this.testCylinders = [] as any;
+                for (let item of _data["testCylinders"])
+                    this.testCylinders!.push(TestCylinderBreakDto.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): GetTestSetDayDetailsResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new GetTestSetDayDetailsResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["testSetDayId"] = this.testSetDayId;
+        data["dayNum"] = this.dayNum;
+        data["comments"] = this.comments;
+        data["dateDue"] = this.dateDue ? this.dateDue.toISOString() : undefined as any;
+        data["dateTested"] = this.dateTested ? this.dateTested.toISOString() : undefined as any;
+        data["jobCode"] = this.jobCode;
+        data["jobName"] = this.jobName;
+        data["mixDesignCode"] = this.mixDesignCode;
+        data["requiredPsi"] = this.requiredPsi;
+        data["pieceType"] = this.pieceType;
+        data["castDate"] = this.castDate ? this.castDate.toISOString() : undefined as any;
+        data["castTime"] = this.castTime;
+        if (Array.isArray(this.testCylinders)) {
+            data["testCylinders"] = [];
+            for (let item of this.testCylinders)
+                data["testCylinders"].push(item ? item.toJSON() : undefined as any);
+        }
+        return data;
+    }
+}
+
+export interface IGetTestSetDayDetailsResponse {
+    testSetDayId?: number;
+    dayNum?: number;
+    comments?: string | undefined;
+    dateDue?: Date;
+    dateTested?: Date | undefined;
+    jobCode?: string | undefined;
+    jobName?: string | undefined;
+    mixDesignCode?: string | undefined;
+    requiredPsi?: number;
+    pieceType?: string | undefined;
+    castDate?: Date;
+    castTime?: string | undefined;
+    testCylinders?: TestCylinderBreakDto[] | undefined;
 }
 
 export class ProblemDetails implements IProblemDetails {
@@ -362,6 +567,146 @@ export interface IProblemDetails {
     [key: string]: any;
 }
 
+export class SaveTestSetDayDataRequest implements ISaveTestSetDayDataRequest {
+    testSetDayId?: number;
+    dateTested?: Date;
+    comments?: string | undefined;
+    cylinderBreaks?: TestCylinderBreakInput[] | undefined;
+
+    constructor(data?: ISaveTestSetDayDataRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.testSetDayId = _data["testSetDayId"];
+            this.dateTested = _data["dateTested"] ? new Date(_data["dateTested"].toString()) : undefined as any;
+            this.comments = _data["comments"];
+            if (Array.isArray(_data["cylinderBreaks"])) {
+                this.cylinderBreaks = [] as any;
+                for (let item of _data["cylinderBreaks"])
+                    this.cylinderBreaks!.push(TestCylinderBreakInput.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): SaveTestSetDayDataRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new SaveTestSetDayDataRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["testSetDayId"] = this.testSetDayId;
+        data["dateTested"] = this.dateTested ? this.dateTested.toISOString() : undefined as any;
+        data["comments"] = this.comments;
+        if (Array.isArray(this.cylinderBreaks)) {
+            data["cylinderBreaks"] = [];
+            for (let item of this.cylinderBreaks)
+                data["cylinderBreaks"].push(item ? item.toJSON() : undefined as any);
+        }
+        return data;
+    }
+}
+
+export interface ISaveTestSetDayDataRequest {
+    testSetDayId?: number;
+    dateTested?: Date;
+    comments?: string | undefined;
+    cylinderBreaks?: TestCylinderBreakInput[] | undefined;
+}
+
+export class TestCylinderBreakDto implements ITestCylinderBreakDto {
+    testCylinderId?: number;
+    code?: string | undefined;
+    breakPsi?: number | undefined;
+
+    constructor(data?: ITestCylinderBreakDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.testCylinderId = _data["testCylinderId"];
+            this.code = _data["code"];
+            this.breakPsi = _data["breakPsi"];
+        }
+    }
+
+    static fromJS(data: any): TestCylinderBreakDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new TestCylinderBreakDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["testCylinderId"] = this.testCylinderId;
+        data["code"] = this.code;
+        data["breakPsi"] = this.breakPsi;
+        return data;
+    }
+}
+
+export interface ITestCylinderBreakDto {
+    testCylinderId?: number;
+    code?: string | undefined;
+    breakPsi?: number | undefined;
+}
+
+export class TestCylinderBreakInput implements ITestCylinderBreakInput {
+    testCylinderId?: number;
+    breakPsi?: number;
+
+    constructor(data?: ITestCylinderBreakInput) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.testCylinderId = _data["testCylinderId"];
+            this.breakPsi = _data["breakPsi"];
+        }
+    }
+
+    static fromJS(data: any): TestCylinderBreakInput {
+        data = typeof data === 'object' ? data : {};
+        let result = new TestCylinderBreakInput();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["testCylinderId"] = this.testCylinderId;
+        data["breakPsi"] = this.breakPsi;
+        return data;
+    }
+}
+
+export interface ITestCylinderBreakInput {
+    testCylinderId?: number;
+    breakPsi?: number;
+}
+
 export class TestCylinderQueueResponse implements ITestCylinderQueueResponse {
     testCylinderCode?: string | undefined;
     ovenId?: string | undefined;
@@ -374,6 +719,7 @@ export class TestCylinderQueueResponse implements ITestCylinderQueueResponse {
     requiredPsi?: number;
     pieceType?: string | undefined;
     testSetId?: number;
+    testSetDayId?: number;
     dateDue?: Date;
 
     constructor(data?: ITestCylinderQueueResponse) {
@@ -398,6 +744,7 @@ export class TestCylinderQueueResponse implements ITestCylinderQueueResponse {
             this.requiredPsi = _data["requiredPsi"];
             this.pieceType = _data["pieceType"];
             this.testSetId = _data["testSetId"];
+            this.testSetDayId = _data["testSetDayId"];
             this.dateDue = _data["dateDue"] ? new Date(_data["dateDue"].toString()) : undefined as any;
         }
     }
@@ -422,6 +769,7 @@ export class TestCylinderQueueResponse implements ITestCylinderQueueResponse {
         data["requiredPsi"] = this.requiredPsi;
         data["pieceType"] = this.pieceType;
         data["testSetId"] = this.testSetId;
+        data["testSetDayId"] = this.testSetDayId;
         data["dateDue"] = this.dateDue ? this.dateDue.toISOString() : undefined as any;
         return data;
     }
@@ -439,6 +787,7 @@ export interface ITestCylinderQueueResponse {
     requiredPsi?: number;
     pieceType?: string | undefined;
     testSetId?: number;
+    testSetDayId?: number;
     dateDue?: Date;
 }
 

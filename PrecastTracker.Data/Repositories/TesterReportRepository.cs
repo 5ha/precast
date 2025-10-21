@@ -41,6 +41,7 @@ public class TesterReportRepository : ITesterReportRepository
                     RequiredPsi = mdr.RequiredPsi,
                     PieceType = tc.TestSetDay.TestSet.Placement.PieceType,
                     TestSetId = tc.TestSetDay.TestSetId,
+                    TestSetDayId = tc.TestSetDay.TestSetDayId,
                     DateDue = tc.TestSetDay.DateDue
                 })
             .ToListAsync();
@@ -76,6 +77,7 @@ public class TesterReportRepository : ITesterReportRepository
                     RequiredPsi = mdr.RequiredPsi,
                     PieceType = tc.TestSetDay.TestSet.Placement.PieceType,
                     TestSetId = tc.TestSetDay.TestSetId,
+                    TestSetDayId = tc.TestSetDay.TestSetDayId,
                     DateDue = tc.TestSetDay.DateDue
                 })
             .ToListAsync();
@@ -109,6 +111,7 @@ public class TesterReportRepository : ITesterReportRepository
                     RequiredPsi = mdr.RequiredPsi,
                     PieceType = tc.TestSetDay.TestSet.Placement.PieceType,
                     TestSetId = tc.TestSetDay.TestSetId,
+                    TestSetDayId = tc.TestSetDay.TestSetDayId,
                     DateDue = tc.TestSetDay.DateDue
                 })
             .ToListAsync();
@@ -136,5 +139,39 @@ public class TesterReportRepository : ITesterReportRepository
                 Volume = p.Volume
             })
             .ToListAsync();
+    }
+
+    public async Task<TestSetDayDetailsProjection?> GetTestSetDayDetailsProjectionAsync(int testSetDayId)
+    {
+        var query = from tsd in _context.TestSetDays
+            where tsd.TestSetDayId == testSetDayId
+            join mdr in _context.MixDesignRequirements
+                on new { MixDesignId = tsd.TestSet.Placement.MixBatch.MixDesignId, TestType = tsd.DayNum }
+                equals new { MixDesignId = mdr.MixDesignId, TestType = mdr.TestType }
+            select new TestSetDayDetailsProjection
+            {
+                TestSetDayId = tsd.TestSetDayId,
+                DayNum = tsd.DayNum,
+                Comments = tsd.Comments,
+                DateDue = tsd.DateDue,
+                DateTested = tsd.DateTested,
+                JobCode = tsd.TestSet.Placement.Pour.Job.Code,
+                JobName = tsd.TestSet.Placement.Pour.Job.Name,
+                MixDesignCode = tsd.TestSet.Placement.MixBatch.MixDesign.Code,
+                RequiredPsi = mdr.RequiredPsi,
+                PieceType = tsd.TestSet.Placement.PieceType,
+                CastDate = tsd.TestSet.Placement.MixBatch.ProductionDay.Date,
+                CastTime = tsd.TestSet.Placement.StartTime,
+                TestCylinders = tsd.TestCylinders
+                    .Select(tc => new TestCylinderBreakProjection
+                    {
+                        TestCylinderId = tc.TestCylinderId,
+                        Code = tc.Code,
+                        BreakPsi = tc.BreakPsi
+                    })
+                    .ToList()
+            };
+
+        return await query.AsNoTracking().FirstOrDefaultAsync();
     }
 }

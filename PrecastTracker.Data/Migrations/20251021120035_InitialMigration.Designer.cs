@@ -11,8 +11,8 @@ using PrecastTracker.Data;
 namespace PrecastTracker.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20251015135455_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20251021120035_InitialMigration")]
+    partial class InitialMigration
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -23,6 +23,7 @@ namespace PrecastTracker.Data.Migrations
             modelBuilder.Entity("PrecastTracker.Data.Entities.Bed", b =>
                 {
                     b.Property<int>("BedId")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
                     b.HasKey("BedId");
@@ -159,7 +160,7 @@ namespace PrecastTracker.Data.Migrations
                     b.Property<int>("PourId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<TimeSpan>("StartTime")
+                    b.Property<TimeSpan?>("StartTime")
                         .HasColumnType("TEXT");
 
                     b.Property<decimal>("Volume")
@@ -222,7 +223,9 @@ namespace PrecastTracker.Data.Migrations
                     b.Property<int?>("BreakPsi")
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTime?>("DateTested")
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
                     b.Property<int>("TestSetDayId")
@@ -261,13 +264,14 @@ namespace PrecastTracker.Data.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime>("DateDue")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DateTested")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("DayNum")
                         .HasColumnType("INTEGER");
-
-                    b.Property<bool>("IsComplete")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER")
-                        .HasDefaultValue(false);
 
                     b.Property<int>("TestSetId")
                         .HasColumnType("INTEGER");

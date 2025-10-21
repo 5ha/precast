@@ -9,4 +9,6 @@ public interface ITesterReportBusiness : IBusiness
     Task<BusinessResult<IEnumerable<TestCylinderQueueResponse>>> GetTestsOverdueAsync();
     Task<BusinessResult<IEnumerable<TestCylinderQueueResponse>>> GetTestsUpcomingAsync(int days);
     Task<BusinessResult<IEnumerable<UntestedPlacementResponse>>> GetUntestedPlacementsAsync(int daysBack = 7);
+    Task<BusinessResult<GetTestSetDayDetailsResponse>> GetTestSetDayDetailsAsync(int testSetDayId);
+    Task<BusinessResult> SaveTestSetDayDataAsync(SaveTestSetDayDataRequest request);
 }

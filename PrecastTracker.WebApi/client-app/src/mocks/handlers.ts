@@ -1,5 +1,9 @@
 import { http, HttpResponse } from 'msw';
-import type { ITestCylinderQueueResponse } from '$lib/api/generated/api-client';
+import type {
+	ITestCylinderQueueResponse,
+	IGetTestSetDayDetailsResponse,
+	ITestCylinderBreakDto
+} from '$lib/api/generated/api-client';
 
 const today = new Date();
 const yesterday = new Date(today);
@@ -19,6 +23,7 @@ const mockTestsDueToday: ITestCylinderQueueResponse[] = [
 		requiredPsi: 6000,
 		pieceType: 'Walls',
 		testSetId: 1,
+		testSetDayId: 101,
 		dateDue: new Date(today)
 	},
 	{
@@ -33,6 +38,7 @@ const mockTestsDueToday: ITestCylinderQueueResponse[] = [
 		requiredPsi: 3500,
 		pieceType: 'Tees',
 		testSetId: 2,
+		testSetDayId: 102,
 		dateDue: new Date(today)
 	},
 	{
@@ -47,6 +53,7 @@ const mockTestsDueToday: ITestCylinderQueueResponse[] = [
 		requiredPsi: 5000,
 		pieceType: 'Beams',
 		testSetId: 3,
+		testSetDayId: 103,
 		dateDue: new Date(today)
 	},
 	{
@@ -61,6 +68,7 @@ const mockTestsDueToday: ITestCylinderQueueResponse[] = [
 		requiredPsi: 4500,
 		pieceType: 'Columns',
 		testSetId: 4,
+		testSetDayId: 104,
 		dateDue: new Date(today)
 	},
 	{
@@ -75,6 +83,7 @@ const mockTestsDueToday: ITestCylinderQueueResponse[] = [
 		requiredPsi: 4000,
 		pieceType: 'Slabs',
 		testSetId: 5,
+		testSetDayId: 105,
 		dateDue: new Date(today)
 	}
 ];
@@ -155,6 +164,67 @@ const mockTestsUpcoming: ITestCylinderQueueResponse[] = [
 	}
 ];
 
+// Mock data for test set day details
+const mockTestSetDayDetails: Record<number, IGetTestSetDayDetailsResponse> = {
+	101: {
+		testSetDayId: 101,
+		dayNum: 7,
+		comments: undefined,
+		dateDue: new Date(today),
+		dateTested: undefined,
+		jobCode: '25-009',
+		jobName: 'Dickinson School',
+		mixDesignCode: '2509.1',
+		requiredPsi: 6000,
+		pieceType: 'Walls',
+		castDate: new Date(yesterday),
+		castTime: '08:00:00',
+		testCylinders: [
+			{ testCylinderId: 1001, code: 'TEST-9011-1', breakPsi: undefined },
+			{ testCylinderId: 1002, code: 'TEST-9011-2', breakPsi: undefined },
+			{ testCylinderId: 1003, code: 'TEST-9011-3', breakPsi: undefined }
+		]
+	},
+	102: {
+		testSetDayId: 102,
+		dayNum: 1,
+		comments: undefined,
+		dateDue: new Date(today),
+		dateTested: undefined,
+		jobCode: '25-020',
+		jobName: 'Woodbury Plaza',
+		mixDesignCode: '824.1',
+		requiredPsi: 3500,
+		pieceType: 'Tees',
+		castDate: new Date(yesterday),
+		castTime: '09:30:00',
+		testCylinders: [
+			{ testCylinderId: 1004, code: 'TEST-9012.1-1', breakPsi: undefined },
+			{ testCylinderId: 1005, code: 'TEST-9012.1-2', breakPsi: undefined },
+			{ testCylinderId: 1006, code: 'TEST-9012.1-3', breakPsi: undefined }
+		]
+	},
+	103: {
+		testSetDayId: 103,
+		dayNum: 28,
+		comments: 'Previously tested on day 7',
+		dateDue: new Date(today),
+		dateTested: new Date(yesterday.getTime() - 21 * 24 * 60 * 60 * 1000),
+		jobCode: '25-015',
+		jobName: 'Main Street Bridge',
+		mixDesignCode: '622.1',
+		requiredPsi: 5000,
+		pieceType: 'Beams',
+		castDate: new Date(yesterday.getTime() - 27 * 24 * 60 * 60 * 1000),
+		castTime: '14:15:00',
+		testCylinders: [
+			{ testCylinderId: 1006, code: 'TEST-9015-1', breakPsi: 5200 },
+			{ testCylinderId: 1007, code: 'TEST-9015-2', breakPsi: 5400 },
+			{ testCylinderId: 1008, code: 'TEST-9015-3', breakPsi: 5100 }
+		]
+	}
+};
+
 export const handlers = [
 	// Handle GET /api/tester-report/tests-due-today
 	http.get('/api/tester-report/tests-due-today', () => {
@@ -169,5 +239,26 @@ export const handlers = [
 	// Handle GET /api/tester-report/tests-upcoming
 	http.get('/api/tester-report/tests-upcoming', () => {
 		return HttpResponse.json(mockTestsUpcoming);
+	}),
+
+	// Handle GET /api/tester-report/test-set-day/:testSetDayId
+	http.get('/api/tester-report/test-set-day/:testSetDayId', ({ params }) => {
+		const testSetDayId = parseInt(params.testSetDayId as string);
+		const details = mockTestSetDayDetails[testSetDayId];
+
+		if (!details) {
+			return HttpResponse.json({ message: 'Test set day not found' }, { status: 404 });
+		}
+
+		return HttpResponse.json(details);
+	}),
+
+	// Handle POST /api/tester-report/test-set-day
+	http.post('/api/tester-report/test-set-day', async ({ request }) => {
+		const body = (await request.json()) as any;
+		console.log('Mock: Saving test set day data:', body);
+
+		// Simulate successful save
+		return HttpResponse.json(null, { status: 200 });
 	})
 ];

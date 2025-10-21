@@ -51,4 +51,25 @@ public class TesterReportController : BaseController<TesterReportController>
         var result = await _business.GetUntestedPlacementsAsync(daysBack);
         return HandleBusinessResult(result);
     }
+
+    [HttpGet("test-set-day/{testSetDayId}")]
+    [ProducesResponseType(typeof(GetTestSetDayDetailsResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> GetTestSetDayDetails(int testSetDayId)
+    {
+        var result = await _business.GetTestSetDayDetailsAsync(testSetDayId);
+        return HandleBusinessResult(result);
+    }
+
+    [HttpPost("test-set-day")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> SaveTestSetDayData([FromBody] SaveTestSetDayDataRequest request)
+    {
+        var result = await _business.SaveTestSetDayDataAsync(request);
+        return HandleBusinessResult(result);
+    }
 }

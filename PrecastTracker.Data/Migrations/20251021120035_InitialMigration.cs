@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace PrecastTracker.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class InitialMigration : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -16,6 +16,7 @@ namespace PrecastTracker.Data.Migrations
                 columns: table => new
                 {
                     BedId = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true)
                 },
                 constraints: table =>
                 {
@@ -142,7 +143,7 @@ namespace PrecastTracker.Data.Migrations
                     PlacementId = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
                     PieceType = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
-                    StartTime = table.Column<TimeSpan>(type: "TEXT", nullable: false),
+                    StartTime = table.Column<TimeSpan>(type: "TEXT", nullable: true),
                     Volume = table.Column<decimal>(type: "TEXT", precision: 18, scale: 2, nullable: false),
                     OvenId = table.Column<string>(type: "TEXT", maxLength: 50, nullable: true),
                     PourId = table.Column<int>(type: "INTEGER", nullable: false),
@@ -211,8 +212,9 @@ namespace PrecastTracker.Data.Migrations
                     TestSetDayId = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
                     DayNum = table.Column<int>(type: "INTEGER", nullable: false),
-                    IsComplete = table.Column<bool>(type: "INTEGER", nullable: false, defaultValue: false),
                     Comments = table.Column<string>(type: "TEXT", maxLength: 500, nullable: true),
+                    DateDue = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    DateTested = table.Column<DateTime>(type: "TEXT", nullable: true),
                     TestSetId = table.Column<int>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>
@@ -232,7 +234,7 @@ namespace PrecastTracker.Data.Migrations
                 {
                     TestCylinderId = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
-                    DateTested = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    Code = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
                     BreakPsi = table.Column<int>(type: "INTEGER", nullable: true),
                     TestSetDayId = table.Column<int>(type: "INTEGER", nullable: false)
                 },

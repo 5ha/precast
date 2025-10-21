@@ -1,19 +1,30 @@
 using Microsoft.Extensions.Logging;
 using PrecastTracker.Business.Core;
 using PrecastTracker.Contracts.DTOs.RequestResponse;
+using PrecastTracker.Data;
 using PrecastTracker.Data.Repositories;
+using PrecastTracker.Services;
 
 namespace PrecastTracker.Business;
 
 public class TesterReportBusiness : BaseBusiness<TesterReportBusiness>, ITesterReportBusiness
 {
-    private readonly ITesterReportRepository _repository;
+    private readonly ITesterReportRepository _testerReportRepository;
+    private readonly ITestSetDayRepository _testSetDayRepository;
+    private readonly ITestResultService _testResultService;
+    private readonly ApplicationDbContext _context;
 
     public TesterReportBusiness(
-        ITesterReportRepository repository,
+        ITesterReportRepository testerReportRepository,
+        ITestSetDayRepository testSetDayRepository,
+        ITestResultService testResultService,
+        ApplicationDbContext context,
         ILogger<TesterReportBusiness> logger) : base(logger)
     {
-        _repository = repository;
+        _testerReportRepository = testerReportRepository;
+        _testSetDayRepository = testSetDayRepository;
+        _testResultService = testResultService;
+        _context = context;
     }
 
     public async Task<BusinessResult<IEnumerable<TestCylinderQueueResponse>>> GetTestsDueTodayAsync()
@@ -22,7 +33,7 @@ public class TesterReportBusiness : BaseBusiness<TesterReportBusiness>, ITesterR
         {
             _logger.LogInformation("Retrieving tests due today");
 
-            var projections = await _repository.GetTestsDueTodayAsync();
+            var projections = await _testerReportRepository.GetTestsDueTodayAsync();
             var response = projections.Select(MapToResponse);
 
             return BusinessResult<IEnumerable<TestCylinderQueueResponse>>.Success(response);
@@ -41,7 +52,7 @@ public class TesterReportBusiness : BaseBusiness<TesterReportBusiness>, ITesterR
         {
             _logger.LogInformation("Retrieving overdue tests");
 
-            var projections = await _repository.GetTestsDuePastAsync();
+            var projections = await _testerReportRepository.GetTestsDuePastAsync();
             var response = projections.Select(MapToResponse);
 
             return BusinessResult<IEnumerable<TestCylinderQueueResponse>>.Success(response);
@@ -63,7 +74,7 @@ public class TesterReportBusiness : BaseBusiness<TesterReportBusiness>, ITesterR
             var startDate = DateTime.Today.AddDays(1);
             var endDate = DateTime.Today.AddDays(days).AddDays(1).AddTicks(-1);
 
-            var projections = await _repository.GetTestsDueBetweenDatesAsync(startDate, endDate);
+            var projections = await _testerReportRepository.GetTestsDueBetweenDatesAsync(startDate, endDate);
             var response = projections.Select(MapToResponse);
 
             return BusinessResult<IEnumerable<TestCylinderQueueResponse>>.Success(response);
@@ -82,7 +93,7 @@ public class TesterReportBusiness : BaseBusiness<TesterReportBusiness>, ITesterR
         {
             _logger.LogInformation("Retrieving untested placements from the last {DaysBack} days", daysBack);
 
-            var projections = await _repository.GetUntestedPlacementsAsync(daysBack);
+            var projections = await _testerReportRepository.GetUntestedPlacementsAsync(daysBack);
             var response = projections.Select(MapToUntestedPlacementResponse);
 
             return BusinessResult<IEnumerable<UntestedPlacementResponse>>.Success(response);
@@ -110,6 +121,7 @@ public class TesterReportBusiness : BaseBusiness<TesterReportBusiness>, ITesterR
             RequiredPsi = projection.RequiredPsi,
             PieceType = projection.PieceType,
             TestSetId = projection.TestSetId,
+            TestSetDayId = projection.TestSetDayId,
             DateDue = projection.DateDue
         };
     }
@@ -127,6 +139,113 @@ public class TesterReportBusiness : BaseBusiness<TesterReportBusiness>, ITesterR
             MixDesignCode = projection.MixDesignCode,
             PieceType = projection.PieceType,
             Volume = projection.Volume
+        };
+    }
+
+    public async Task<BusinessResult<GetTestSetDayDetailsResponse>> GetTestSetDayDetailsAsync(int testSetDayId)
+    {
+        try
+        {
+            _logger.LogInformation("Retrieving test set day details for TestSetDayId: {TestSetDayId}", testSetDayId);
+
+            var projection = await _testerReportRepository.GetTestSetDayDetailsProjectionAsync(testSetDayId);
+
+            if (projection == null)
+            {
+                _logger.LogWarning("Test set day not found for TestSetDayId: {TestSetDayId}", testSetDayId);
+                return BusinessResult<GetTestSetDayDetailsResponse>.Failure(
+                    BusinessError.NotFound($"Test set day with ID {testSetDayId} not found"));
+            }
+
+            var response = MapToDetailsResponse(projection);
+            return BusinessResult<GetTestSetDayDetailsResponse>.Success(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving test set day details for TestSetDayId: {TestSetDayId}", testSetDayId);
+            return BusinessResult<GetTestSetDayDetailsResponse>.Failure(
+                BusinessError.InternalError("Failed to retrieve test set day details"));
+        }
+    }
+
+    public async Task<BusinessResult> SaveTestSetDayDataAsync(SaveTestSetDayDataRequest request)
+    {
+        try
+        {
+            _logger.LogInformation("Saving test set day data for TestSetDayId: {TestSetDayId}", request.TestSetDayId);
+
+            // Validate: DateTested must not be before CastDate
+            var castDate = await _testSetDayRepository.GetCastDateAsync(request.TestSetDayId);
+
+            if (castDate == null)
+            {
+                _logger.LogWarning("Test set day not found for TestSetDayId: {TestSetDayId}", request.TestSetDayId);
+                return BusinessResult.Failure(
+                    BusinessError.NotFound($"Test set day with ID {request.TestSetDayId} not found"));
+            }
+
+            if (request.DateTested < castDate.Value)
+            {
+                _logger.LogWarning(
+                    "DateTested ({DateTested}) is before CastDate ({CastDate}) for TestSetDayId: {TestSetDayId}",
+                    request.DateTested, castDate.Value, request.TestSetDayId);
+                return BusinessResult.Failure(
+                    BusinessError.Validation($"Test date cannot be before cast date ({castDate.Value:yyyy-MM-dd})"));
+            }
+
+            // Call service to update entities (service loads entity itself)
+            try
+            {
+                await _testResultService.UpdateTestSetDayResultsAsync(
+                    request.TestSetDayId,
+                    request.DateTested,
+                    request.Comments,
+                    request.CylinderBreaks);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Validation error while updating test results for TestSetDayId: {TestSetDayId}", request.TestSetDayId);
+                return BusinessResult.Failure(BusinessError.Validation(ex.Message));
+            }
+
+            // Save changes
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Successfully saved test set day data for TestSetDayId: {TestSetDayId}", request.TestSetDayId);
+            return BusinessResult.Success();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saving test set day data for TestSetDayId: {TestSetDayId}", request.TestSetDayId);
+            return BusinessResult.Failure(
+                BusinessError.InternalError("Failed to save test set day data"));
+        }
+    }
+
+    private static GetTestSetDayDetailsResponse MapToDetailsResponse(Data.Projections.TestSetDayDetailsProjection projection)
+    {
+        return new GetTestSetDayDetailsResponse
+        {
+            TestSetDayId = projection.TestSetDayId,
+            DayNum = projection.DayNum,
+            Comments = projection.Comments,
+            DateDue = projection.DateDue,
+            DateTested = projection.DateTested,
+            JobCode = projection.JobCode,
+            JobName = projection.JobName,
+            MixDesignCode = projection.MixDesignCode,
+            RequiredPsi = projection.RequiredPsi,
+            PieceType = projection.PieceType,
+            CastDate = projection.CastDate,
+            CastTime = projection.CastTime,
+            TestCylinders = projection.TestCylinders
+                .Select(tc => new TestCylinderBreakDto
+                {
+                    TestCylinderId = tc.TestCylinderId,
+                    Code = tc.Code,
+                    BreakPsi = tc.BreakPsi
+                })
+                .ToList()
         };
     }
 }

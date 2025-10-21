@@ -1,8 +1,10 @@
 using Microsoft.Extensions.Logging;
 using Moq;
 using PrecastTracker.Business;
+using PrecastTracker.Data;
 using PrecastTracker.Data.Projections;
 using PrecastTracker.Data.Repositories;
+using PrecastTracker.Services;
 
 namespace PrecastTracker.Tests.Business;
 
@@ -17,8 +19,15 @@ public class TesterReportBusinessTests
 
         // Arrange
         var mockRepository = new Mock<ITesterReportRepository>();
+        var mockTestSetDayRepository = new Mock<ITestSetDayRepository>();
+        var mockTestResultService = new Mock<ITestResultService>();
         var mockLogger = new Mock<ILogger<TesterReportBusiness>>();
-        var business = new TesterReportBusiness(mockRepository.Object, mockLogger.Object);
+        var business = new TesterReportBusiness(
+            mockRepository.Object,
+            mockTestSetDayRepository.Object,
+            mockTestResultService.Object,
+            null!, // DbContext not used in this test
+            mockLogger.Object);
 
         var days = 7;
         var today = DateTime.Today;
@@ -50,8 +59,15 @@ public class TesterReportBusinessTests
 
         // Arrange
         var mockRepository = new Mock<ITesterReportRepository>();
+        var mockTestSetDayRepository = new Mock<ITestSetDayRepository>();
+        var mockTestResultService = new Mock<ITestResultService>();
         var mockLogger = new Mock<ILogger<TesterReportBusiness>>();
-        var business = new TesterReportBusiness(mockRepository.Object, mockLogger.Object);
+        var business = new TesterReportBusiness(
+            mockRepository.Object,
+            mockTestSetDayRepository.Object,
+            mockTestResultService.Object,
+            null!, // DbContext not used in this test
+            mockLogger.Object);
 
         var today = DateTime.Today;
         var projections = new List<TestCylinderQueueProjection>

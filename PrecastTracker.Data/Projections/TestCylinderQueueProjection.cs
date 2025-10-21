@@ -13,5 +13,6 @@ public class TestCylinderQueueProjection
     public int RequiredPsi { get; set; }
     public string PieceType { get; set; } = string.Empty;
     public int TestSetId { get; set; }
+    public int TestSetDayId { get; set; }
     public DateTime DateDue { get; set; }
 }
