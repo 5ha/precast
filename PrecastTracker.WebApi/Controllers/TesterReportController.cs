@@ -42,4 +42,13 @@ public class TesterReportController : BaseController<TesterReportController>
         var result = await _business.GetTestsUpcomingAsync(days);
         return HandleBusinessResult(result);
     }
+
+    [HttpGet("untested-placements")]
+    [ProducesResponseType(typeof(IEnumerable<UntestedPlacementResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> GetUntestedPlacements([FromQuery] int daysBack = 7)
+    {
+        var result = await _business.GetUntestedPlacementsAsync(daysBack);
+        return HandleBusinessResult(result);
+    }
 }

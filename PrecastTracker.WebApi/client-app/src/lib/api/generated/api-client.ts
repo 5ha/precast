@@ -240,6 +240,62 @@ export class ApiClient {
         }
         return Promise.resolve<TestCylinderQueueResponse[]>(null as any);
     }
+
+    /**
+     * @param daysBack (optional) 
+     * @return OK
+     */
+    untestedPlacements(daysBack: number | undefined): Promise<UntestedPlacementResponse[]> {
+        let url_ = this.baseUrl + "/api/tester-report/untested-placements?";
+        if (daysBack === null)
+            throw new globalThis.Error("The parameter 'daysBack' cannot be null.");
+        else if (daysBack !== undefined)
+            url_ += "daysBack=" + encodeURIComponent("" + daysBack) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processUntestedPlacements(_response);
+        });
+    }
+
+    protected processUntestedPlacements(response: Response): Promise<UntestedPlacementResponse[]> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            if (Array.isArray(resultData200)) {
+                result200 = [] as any;
+                for (let item of resultData200)
+                    result200!.push(UntestedPlacementResponse.fromJS(item));
+            }
+            else {
+                result200 = null as any;
+            }
+            return result200;
+            });
+        } else if (status === 500) {
+            return response.text().then((_responseText) => {
+            let result500: any = null;
+            let resultData500 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result500 = ProblemDetails.fromJS(resultData500);
+            return throwException("Internal Server Error", status, _responseText, _headers, result500);
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<UntestedPlacementResponse[]>(null as any);
+    }
 }
 
 export class ProblemDetails implements IProblemDetails {
@@ -384,6 +440,74 @@ export interface ITestCylinderQueueResponse {
     pieceType?: string | undefined;
     testSetId?: number;
     isComplete?: boolean;
+}
+
+export class UntestedPlacementResponse implements IUntestedPlacementResponse {
+    pourId?: number;
+    placementId?: number;
+    castDate?: Date;
+    castTime?: string | undefined;
+    jobCode?: string | undefined;
+    jobName?: string | undefined;
+    mixDesignCode?: string | undefined;
+    pieceType?: string | undefined;
+    volume?: number;
+
+    constructor(data?: IUntestedPlacementResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.pourId = _data["pourId"];
+            this.placementId = _data["placementId"];
+            this.castDate = _data["castDate"] ? new Date(_data["castDate"].toString()) : undefined as any;
+            this.castTime = _data["castTime"];
+            this.jobCode = _data["jobCode"];
+            this.jobName = _data["jobName"];
+            this.mixDesignCode = _data["mixDesignCode"];
+            this.pieceType = _data["pieceType"];
+            this.volume = _data["volume"];
+        }
+    }
+
+    static fromJS(data: any): UntestedPlacementResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new UntestedPlacementResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["pourId"] = this.pourId;
+        data["placementId"] = this.placementId;
+        data["castDate"] = this.castDate ? this.castDate.toISOString() : undefined as any;
+        data["castTime"] = this.castTime;
+        data["jobCode"] = this.jobCode;
+        data["jobName"] = this.jobName;
+        data["mixDesignCode"] = this.mixDesignCode;
+        data["pieceType"] = this.pieceType;
+        data["volume"] = this.volume;
+        return data;
+    }
+}
+
+export interface IUntestedPlacementResponse {
+    pourId?: number;
+    placementId?: number;
+    castDate?: Date;
+    castTime?: string | undefined;
+    jobCode?: string | undefined;
+    jobName?: string | undefined;
+    mixDesignCode?: string | undefined;
+    pieceType?: string | undefined;
+    volume?: number;
 }
 
 export class SwaggerException extends Error {

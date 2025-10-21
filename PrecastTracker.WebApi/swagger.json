@@ -213,6 +213,75 @@
           }
         }
       }
+    },
+    "/api/tester-report/untested-placements": {
+      "get": {
+        "tags": [
+          "TesterReport"
+        ],
+        "parameters": [
+          {
+            "name": "daysBack",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 7
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UntestedPlacementResponse"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UntestedPlacementResponse"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UntestedPlacementResponse"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -294,6 +363,49 @@
           },
           "isComplete": {
             "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UntestedPlacementResponse": {
+        "type": "object",
+        "properties": {
+          "pourId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "placementId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "castDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "castTime": {
+            "type": "string",
+            "format": "date-span",
+            "nullable": true
+          },
+          "jobCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "jobName": {
+            "type": "string",
+            "nullable": true
+          },
+          "mixDesignCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "pieceType": {
+            "type": "string",
+            "nullable": true
+          },
+          "volume": {
+            "type": "number",
+            "format": "double"
           }
         },
         "additionalProperties": false

@@ -431,6 +431,221 @@ public class TesterReportRepositoryTests
 
     #endregion
 
+    #region GetUntestedPlacementsAsync Tests
+
+    [Fact]
+    public async Task GetUntestedPlacementsAsync_ReturnsOnlyPlacementsWithStartTimeAndNoTestSets()
+    {
+        // Verify that GetUntestedPlacementsAsync returns placements that:
+        // 1. Have StartTime set (not null)
+        // 2. Have no TestSets
+
+        // Arrange
+        using var context = CreateContext();
+        var repository = new TesterReportRepository(context);
+        var today = DateTime.Today;
+        var testData = CreateUntestedPlacementsTestData(today);
+        await SeedUntestedPlacementsTestDataAsync(context, testData);
+
+        // Act
+        var result = await repository.GetUntestedPlacementsAsync(7);
+        var resultList = result.ToList();
+
+        // Assert
+        Assert.Single(resultList); // Only one placement with StartTime and no TestSets
+        Assert.Equal(testData.PlacementUntested.PlacementId, resultList[0].PlacementId);
+        Assert.Equal("UNTESTED", resultList[0].JobCode);
+    }
+
+    [Fact]
+    public async Task GetUntestedPlacementsAsync_ExcludesPlacementsWithoutStartTime()
+    {
+        // Verify that placements without StartTime (null) are excluded,
+        // even if they have no TestSets
+
+        // Arrange
+        using var context = CreateContext();
+        var repository = new TesterReportRepository(context);
+        var today = DateTime.Today;
+        var testData = CreateUntestedPlacementsTestData(today);
+        await SeedUntestedPlacementsTestDataAsync(context, testData);
+
+        // Act
+        var result = await repository.GetUntestedPlacementsAsync(7);
+
+        // Assert - Should not include placement without StartTime
+        Assert.DoesNotContain(result, p => p.PlacementId == testData.PlacementNoStartTime.PlacementId);
+    }
+
+    [Fact]
+    public async Task GetUntestedPlacementsAsync_ExcludesPlacementsWithTestSets()
+    {
+        // Verify that placements with TestSets are excluded,
+        // even if they have StartTime set
+
+        // Arrange
+        using var context = CreateContext();
+        var repository = new TesterReportRepository(context);
+        var today = DateTime.Today;
+        var testData = CreateUntestedPlacementsTestData(today);
+        await SeedUntestedPlacementsTestDataAsync(context, testData);
+
+        // Act
+        var result = await repository.GetUntestedPlacementsAsync(7);
+
+        // Assert - Should not include placements with TestSets
+        Assert.DoesNotContain(result, p => p.PlacementId == testData.PlacementWithTestSet.PlacementId);
+    }
+
+    [Fact]
+    public async Task GetUntestedPlacementsAsync_ExcludesPlacementsOlderThanDaysBack()
+    {
+        // Verify that placements cast before the cutoff date are excluded
+
+        // Arrange
+        using var context = CreateContext();
+        var repository = new TesterReportRepository(context);
+        var today = DateTime.Today;
+        var testData = CreateUntestedPlacementsTestData(today);
+        await SeedUntestedPlacementsTestDataAsync(context, testData);
+
+        // Act - Only look back 5 days
+        var result = await repository.GetUntestedPlacementsAsync(5);
+
+        // Assert - Should not include placement from 10 days ago
+        Assert.DoesNotContain(result, p => p.PlacementId == testData.PlacementOld.PlacementId);
+    }
+
+    [Fact]
+    public async Task GetUntestedPlacementsAsync_IncludesPlacementsOnCutoffDate()
+    {
+        // Verify that placements cast exactly on the cutoff date are included
+
+        // Arrange
+        using var context = CreateContext();
+        var repository = new TesterReportRepository(context);
+        var today = DateTime.Today;
+        var testData = CreateUntestedPlacementsTestData(today);
+        await SeedUntestedPlacementsTestDataAsync(context, testData);
+
+        // Act - Look back exactly 3 days (should include placement from 3 days ago)
+        var result = await repository.GetUntestedPlacementsAsync(3);
+
+        // Assert - Should include placement from exactly 3 days ago
+        Assert.Contains(result, p => p.PlacementId == testData.PlacementUntested.PlacementId);
+    }
+
+    [Fact]
+    public async Task GetUntestedPlacementsAsync_ReturnsCorrectProjectionData()
+    {
+        // Verify that all fields in UntestedPlacementProjection are correctly populated
+        // from the joined entities (Placement, Pour, Job, MixBatch, etc.)
+
+        // Arrange
+        using var context = CreateContext();
+        var repository = new TesterReportRepository(context);
+        var today = DateTime.Today;
+        var testData = CreateUntestedPlacementsTestData(today);
+        await SeedUntestedPlacementsTestDataAsync(context, testData);
+
+        // Act
+        var result = await repository.GetUntestedPlacementsAsync(7);
+        var projection = result.First();
+
+        // Assert - Verify all projection fields are correctly populated
+        Assert.Equal(testData.PourUntested.PourId, projection.PourId);
+        Assert.Equal(testData.PlacementUntested.PlacementId, projection.PlacementId);
+        Assert.Equal(today.AddDays(-3), projection.CastDate);
+        Assert.Equal(new TimeSpan(14, 30, 0), projection.CastTime);
+        Assert.Equal("UNTESTED", projection.JobCode);
+        Assert.Equal("Untested Job", projection.JobName);
+        Assert.Equal("MIX-UNTESTED", projection.MixDesignCode);
+        Assert.Equal("Walls", projection.PieceType);
+        Assert.Equal(12.5m, projection.Volume);
+    }
+
+    [Fact]
+    public async Task GetUntestedPlacementsAsync_ReturnsEmptyWhenNoUntestedPlacements()
+    {
+        // Verify that an empty list is returned when all placements either:
+        // - Have no StartTime, or
+        // - Have TestSets, or
+        // - Are older than the cutoff
+
+        // Arrange
+        using var context = CreateContext();
+        var repository = new TesterReportRepository(context);
+        var today = DateTime.Today;
+        var testData = CreateUntestedPlacementsTestData(today);
+        await SeedUntestedPlacementsTestDataAsync(context, testData);
+
+        // Act - Look back only 1 day (untested placement is 3 days ago)
+        var result = await repository.GetUntestedPlacementsAsync(1);
+
+        // Assert
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public async Task GetUntestedPlacementsAsync_ReturnsMultipleUntestedPlacements()
+    {
+        // Verify that multiple untested placements are returned when they exist
+
+        // Arrange
+        using var context = CreateContext();
+        var repository = new TesterReportRepository(context);
+        var today = DateTime.Today;
+
+        // Create two untested placements
+        var prodDay = new ProductionDay { Date = today.AddDays(-2) };
+        var job = new Job { Code = "TEST", Name = "Test Job" };
+        var bed = new Bed();
+        var mixDesign = new MixDesign { Code = "MIX-1" };
+        var pour = new Pour { Job = job, Bed = bed };
+        var mixBatch = new MixBatch { ProductionDay = prodDay, MixDesign = mixDesign };
+
+        var placement1 = new Placement
+        {
+            Pour = pour,
+            MixBatch = mixBatch,
+            StartTime = new TimeSpan(8, 0, 0),
+            PieceType = "Walls",
+            Volume = 10m
+        };
+
+        var placement2 = new Placement
+        {
+            Pour = pour,
+            MixBatch = mixBatch,
+            StartTime = new TimeSpan(10, 0, 0),
+            PieceType = "Slabs",
+            Volume = 15m
+        };
+
+        context.ProductionDays.Add(prodDay);
+        context.Jobs.Add(job);
+        context.Beds.Add(bed);
+        context.MixDesigns.Add(mixDesign);
+        await context.SaveChangesAsync();
+
+        context.Pours.Add(pour);
+        context.MixBatches.Add(mixBatch);
+        await context.SaveChangesAsync();
+
+        context.Placements.AddRange(placement1, placement2);
+        await context.SaveChangesAsync();
+
+        // Act
+        var result = await repository.GetUntestedPlacementsAsync(7);
+
+        // Assert - Should return both untested placements
+        Assert.Equal(2, result.Count);
+        Assert.Contains(result, p => p.PieceType == "Walls");
+        Assert.Contains(result, p => p.PieceType == "Slabs");
+    }
+
+    #endregion
+
     #region Helper Methods
 
     private class TestDataSet
@@ -684,6 +899,149 @@ public class TesterReportRepositoryTests
             data.TestCylinderToday2,
             data.TestCylinderFuture
         );
+        await context.SaveChangesAsync();
+    }
+
+    private class UntestedPlacementsTestDataSet
+    {
+        public ProductionDay ProductionDayRecent { get; set; } = null!;
+        public ProductionDay ProductionDayOld { get; set; } = null!;
+        public ProductionDay ProductionDayPlanned { get; set; } = null!;
+
+        public Job JobUntested { get; set; } = null!;
+        public Job JobWithTests { get; set; } = null!;
+        public Job JobNoStartTime { get; set; } = null!;
+        public Job JobOld { get; set; } = null!;
+
+        public Bed Bed1 { get; set; } = null!;
+
+        public MixDesign MixDesignUntested { get; set; } = null!;
+        public MixDesign MixDesignWithTests { get; set; } = null!;
+        public MixDesign MixDesignNoStartTime { get; set; } = null!;
+        public MixDesign MixDesignOld { get; set; } = null!;
+
+        public Pour PourUntested { get; set; } = null!;
+        public Pour PourWithTests { get; set; } = null!;
+        public Pour PourNoStartTime { get; set; } = null!;
+        public Pour PourOld { get; set; } = null!;
+
+        public MixBatch MixBatchUntested { get; set; } = null!;
+        public MixBatch MixBatchWithTests { get; set; } = null!;
+        public MixBatch MixBatchNoStartTime { get; set; } = null!;
+        public MixBatch MixBatchOld { get; set; } = null!;
+
+        public Placement PlacementUntested { get; set; } = null!;
+        public Placement PlacementWithTestSet { get; set; } = null!;
+        public Placement PlacementNoStartTime { get; set; } = null!;
+        public Placement PlacementOld { get; set; } = null!;
+
+        public TestSet TestSet { get; set; } = null!;
+    }
+
+    private UntestedPlacementsTestDataSet CreateUntestedPlacementsTestData(DateTime today)
+    {
+        var data = new UntestedPlacementsTestDataSet();
+
+        // Create Production Days
+        data.ProductionDayRecent = new ProductionDay { Date = today.AddDays(-3) };
+        data.ProductionDayOld = new ProductionDay { Date = today.AddDays(-10) };
+        data.ProductionDayPlanned = new ProductionDay { Date = today.AddDays(-1) };
+
+        // Create Jobs
+        data.JobUntested = new Job { Code = "UNTESTED", Name = "Untested Job" };
+        data.JobWithTests = new Job { Code = "TESTED", Name = "Tested Job" };
+        data.JobNoStartTime = new Job { Code = "PLANNED", Name = "Planned Job" };
+        data.JobOld = new Job { Code = "OLD", Name = "Old Job" };
+
+        // Create Bed
+        data.Bed1 = new Bed();
+
+        // Create Mix Designs
+        data.MixDesignUntested = new MixDesign { Code = "MIX-UNTESTED" };
+        data.MixDesignWithTests = new MixDesign { Code = "MIX-TESTED" };
+        data.MixDesignNoStartTime = new MixDesign { Code = "MIX-PLANNED" };
+        data.MixDesignOld = new MixDesign { Code = "MIX-OLD" };
+
+        // Create Pours
+        data.PourUntested = new Pour { Job = data.JobUntested, Bed = data.Bed1 };
+        data.PourWithTests = new Pour { Job = data.JobWithTests, Bed = data.Bed1 };
+        data.PourNoStartTime = new Pour { Job = data.JobNoStartTime, Bed = data.Bed1 };
+        data.PourOld = new Pour { Job = data.JobOld, Bed = data.Bed1 };
+
+        // Create Mix Batches
+        data.MixBatchUntested = new MixBatch { ProductionDay = data.ProductionDayRecent, MixDesign = data.MixDesignUntested };
+        data.MixBatchWithTests = new MixBatch { ProductionDay = data.ProductionDayRecent, MixDesign = data.MixDesignWithTests };
+        data.MixBatchNoStartTime = new MixBatch { ProductionDay = data.ProductionDayPlanned, MixDesign = data.MixDesignNoStartTime };
+        data.MixBatchOld = new MixBatch { ProductionDay = data.ProductionDayOld, MixDesign = data.MixDesignOld };
+
+        // Create Placements
+        // 1. Untested placement: has StartTime, no TestSets, within date range
+        data.PlacementUntested = new Placement
+        {
+            Pour = data.PourUntested,
+            MixBatch = data.MixBatchUntested,
+            StartTime = new TimeSpan(14, 30, 0),
+            OvenId = "Oven1",
+            PieceType = "Walls",
+            Volume = 12.5m
+        };
+
+        // 2. Placement with TestSet: has StartTime and TestSets (should be excluded)
+        data.PlacementWithTestSet = new Placement
+        {
+            Pour = data.PourWithTests,
+            MixBatch = data.MixBatchWithTests,
+            StartTime = new TimeSpan(9, 0, 0),
+            OvenId = "Oven2",
+            PieceType = "Tees",
+            Volume = 15.0m
+        };
+
+        // 3. Placement without StartTime: no StartTime, no TestSets (should be excluded)
+        data.PlacementNoStartTime = new Placement
+        {
+            Pour = data.PourNoStartTime,
+            MixBatch = data.MixBatchNoStartTime,
+            StartTime = null, // Null StartTime
+            OvenId = "Oven3",
+            PieceType = "Slabs",
+            Volume = 20.0m
+        };
+
+        // 4. Old placement: has StartTime, no TestSets, but too old (should be excluded when daysBack < 10)
+        data.PlacementOld = new Placement
+        {
+            Pour = data.PourOld,
+            MixBatch = data.MixBatchOld,
+            StartTime = new TimeSpan(11, 0, 0),
+            OvenId = "Oven4",
+            PieceType = "Beams",
+            Volume = 8.5m
+        };
+
+        // Create TestSet for PlacementWithTestSet
+        data.TestSet = new TestSet { Placement = data.PlacementWithTestSet };
+
+        return data;
+    }
+
+    private async Task SeedUntestedPlacementsTestDataAsync(ApplicationDbContext context, UntestedPlacementsTestDataSet data)
+    {
+        // Add in proper order to satisfy foreign key constraints
+        context.ProductionDays.AddRange(data.ProductionDayRecent, data.ProductionDayOld, data.ProductionDayPlanned);
+        context.Jobs.AddRange(data.JobUntested, data.JobWithTests, data.JobNoStartTime, data.JobOld);
+        context.Beds.Add(data.Bed1);
+        context.MixDesigns.AddRange(data.MixDesignUntested, data.MixDesignWithTests, data.MixDesignNoStartTime, data.MixDesignOld);
+        await context.SaveChangesAsync();
+
+        context.Pours.AddRange(data.PourUntested, data.PourWithTests, data.PourNoStartTime, data.PourOld);
+        context.MixBatches.AddRange(data.MixBatchUntested, data.MixBatchWithTests, data.MixBatchNoStartTime, data.MixBatchOld);
+        await context.SaveChangesAsync();
+
+        context.Placements.AddRange(data.PlacementUntested, data.PlacementWithTestSet, data.PlacementNoStartTime, data.PlacementOld);
+        await context.SaveChangesAsync();
+
+        context.TestSets.Add(data.TestSet);
         await context.SaveChangesAsync();
     }
 

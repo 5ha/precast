@@ -113,4 +113,28 @@ public class TesterReportRepository : ITesterReportRepository
                 })
             .ToListAsync();
     }
+
+    public Task<List<UntestedPlacementProjection>> GetUntestedPlacementsAsync(int daysBack)
+    {
+        var cutoffDate = DateTime.Today.AddDays(-daysBack);
+
+        return _context.Placements
+            .AsNoTracking()
+            .Where(p => p.StartTime != null)
+            .Where(p => !p.TestSets.Any())
+            .Where(p => p.MixBatch.ProductionDay.Date >= cutoffDate)
+            .Select(p => new UntestedPlacementProjection
+            {
+                PourId = p.PourId,
+                PlacementId = p.PlacementId,
+                CastDate = p.MixBatch.ProductionDay.Date,
+                CastTime = p.StartTime,
+                JobCode = p.Pour.Job.Code,
+                JobName = p.Pour.Job.Name,
+                MixDesignCode = p.MixBatch.MixDesign.Code,
+                PieceType = p.PieceType,
+                Volume = p.Volume
+            })
+            .ToListAsync();
+    }
 }
