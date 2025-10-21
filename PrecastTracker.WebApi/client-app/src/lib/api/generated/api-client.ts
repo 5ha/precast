@@ -375,6 +375,7 @@ export class TestCylinderQueueResponse implements ITestCylinderQueueResponse {
     pieceType?: string | undefined;
     testSetId?: number;
     isComplete?: boolean;
+    dateDue?: Date;
 
     constructor(data?: ITestCylinderQueueResponse) {
         if (data) {
@@ -399,6 +400,7 @@ export class TestCylinderQueueResponse implements ITestCylinderQueueResponse {
             this.pieceType = _data["pieceType"];
             this.testSetId = _data["testSetId"];
             this.isComplete = _data["isComplete"];
+            this.dateDue = _data["dateDue"] ? new Date(_data["dateDue"].toString()) : undefined as any;
         }
     }
 
@@ -423,6 +425,7 @@ export class TestCylinderQueueResponse implements ITestCylinderQueueResponse {
         data["pieceType"] = this.pieceType;
         data["testSetId"] = this.testSetId;
         data["isComplete"] = this.isComplete;
+        data["dateDue"] = this.dateDue ? this.dateDue.toISOString() : undefined as any;
         return data;
     }
 }
@@ -440,6 +443,7 @@ export interface ITestCylinderQueueResponse {
     pieceType?: string | undefined;
     testSetId?: number;
     isComplete?: boolean;
+    dateDue?: Date;
 }
 
 export class UntestedPlacementResponse implements IUntestedPlacementResponse {

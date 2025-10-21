@@ -19,7 +19,8 @@ const mockTestsDueToday: ITestCylinderQueueResponse[] = [
 		requiredPsi: 6000,
 		pieceType: 'Walls',
 		testSetId: 1,
-		isComplete: false
+		isComplete: false,
+		dateDue: new Date(today)
 	},
 	{
 		testCylinderCode: 'TEST-9012.1',
@@ -33,7 +34,8 @@ const mockTestsDueToday: ITestCylinderQueueResponse[] = [
 		requiredPsi: 3500,
 		pieceType: 'Tees',
 		testSetId: 2,
-		isComplete: false
+		isComplete: false,
+		dateDue: new Date(today)
 	},
 	{
 		testCylinderCode: 'TEST-9015',
@@ -47,7 +49,8 @@ const mockTestsDueToday: ITestCylinderQueueResponse[] = [
 		requiredPsi: 5000,
 		pieceType: 'Beams',
 		testSetId: 3,
-		isComplete: false
+		isComplete: false,
+		dateDue: new Date(today)
 	},
 	{
 		testCylinderCode: 'TEST-9016',
@@ -61,7 +64,8 @@ const mockTestsDueToday: ITestCylinderQueueResponse[] = [
 		requiredPsi: 4500,
 		pieceType: 'Columns',
 		testSetId: 4,
-		isComplete: true
+		isComplete: true,
+		dateDue: new Date(today)
 	},
 	{
 		testCylinderCode: 'TEST-9017.2',
@@ -75,7 +79,8 @@ const mockTestsDueToday: ITestCylinderQueueResponse[] = [
 		requiredPsi: 4000,
 		pieceType: 'Slabs',
 		testSetId: 5,
-		isComplete: false
+		isComplete: false,
+		dateDue: new Date(today)
 	}
 ];
 
@@ -84,15 +89,61 @@ const mockTestsOverdue: ITestCylinderQueueResponse[] = [
 		testCylinderCode: 'TEST-9001',
 		ovenId: 'Oven1',
 		dayNum: 7,
-		castDate: new Date(yesterday.getTime() - 10 * 24 * 60 * 60 * 1000),
+		castDate: new Date(today.getTime() - 10 * 24 * 60 * 60 * 1000),
 		castTime: '08:30:00',
 		jobCode: '25-005',
-		jobName: 'Overdue Project',
+		jobName: 'Overdue Project Alpha',
 		mixDesignCode: '300.1',
 		requiredPsi: 5500,
 		pieceType: 'Walls',
 		testSetId: 6,
-		isComplete: false
+		isComplete: false,
+		dateDue: new Date(today.getTime() - 3 * 24 * 60 * 60 * 1000) // 3 days overdue
+	},
+	{
+		testCylinderCode: 'TEST-9002',
+		ovenId: 'Oven2',
+		dayNum: 1,
+		castDate: new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000),
+		castTime: '10:00:00',
+		jobCode: '25-007',
+		jobName: 'Downtown Plaza',
+		mixDesignCode: '500.2',
+		requiredPsi: 4000,
+		pieceType: 'Slabs',
+		testSetId: 7,
+		isComplete: false,
+		dateDue: new Date(today.getTime() - 1 * 24 * 60 * 60 * 1000) // 1 day overdue
+	},
+	{
+		testCylinderCode: 'TEST-9003',
+		ovenId: 'Oven3',
+		dayNum: 28,
+		castDate: new Date(today.getTime() - 33 * 24 * 60 * 60 * 1000),
+		castTime: '13:45:00',
+		jobCode: '25-003',
+		jobName: 'Industrial Complex',
+		mixDesignCode: '1000.5',
+		requiredPsi: 7000,
+		pieceType: 'Beams',
+		testSetId: 8,
+		isComplete: false,
+		dateDue: new Date(today.getTime() - 5 * 24 * 60 * 60 * 1000) // 5 days overdue
+	},
+	{
+		testCylinderCode: 'TEST-9004',
+		ovenId: 'Oven1',
+		dayNum: 7,
+		castDate: new Date(today.getTime() - 8 * 24 * 60 * 60 * 1000),
+		castTime: '07:15:00',
+		jobCode: '25-012',
+		jobName: 'Warehouse Expansion',
+		mixDesignCode: '622.3',
+		requiredPsi: 5000,
+		pieceType: 'Columns',
+		testSetId: 9,
+		isComplete: false,
+		dateDue: new Date(today.getTime() - 18 * 60 * 60 * 1000) // 18 hours overdue
 	}
 ];
 
@@ -109,7 +160,8 @@ const mockTestsUpcoming: ITestCylinderQueueResponse[] = [
 		requiredPsi: 6500,
 		pieceType: 'Tees',
 		testSetId: 7,
-		isComplete: false
+		isComplete: false,
+		dateDue: new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000) // 2 days from now
 	}
 ];
 

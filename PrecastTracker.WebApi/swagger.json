@@ -363,6 +363,10 @@
           },
           "isComplete": {
             "type": "boolean"
+          },
+          "dateDue": {
+            "type": "string",
+            "format": "date-time"
           }
         },
         "additionalProperties": false

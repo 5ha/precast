@@ -140,6 +140,7 @@ public class TesterReportRepositoryTests
         Assert.Equal(3500, projection.RequiredPsi);
         Assert.Equal("Walls", projection.PieceType);
         Assert.False(projection.IsComplete);
+        Assert.Equal(today.AddDays(-7), projection.DateDue);
     }
 
     #endregion
@@ -262,6 +263,7 @@ public class TesterReportRepositoryTests
         Assert.Equal("MIX-2", projection.MixDesignCode);
         Assert.Equal(4000, projection.RequiredPsi);
         Assert.Equal("Tees", projection.PieceType);
+        Assert.Equal(today, projection.DateDue);
     }
 
     #endregion
@@ -404,6 +406,7 @@ public class TesterReportRepositoryTests
         Assert.Equal("MIX-3", projection.MixDesignCode);
         Assert.Equal(5000, projection.RequiredPsi);
         Assert.Equal("Slabs", projection.PieceType);
+        Assert.Equal(today.AddDays(28), projection.DateDue);
     }
 
     [Fact]

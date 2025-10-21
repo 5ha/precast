@@ -41,7 +41,8 @@ public class TesterReportRepository : ITesterReportRepository
                     RequiredPsi = mdr.RequiredPsi,
                     PieceType = tc.TestSetDay.TestSet.Placement.PieceType,
                     TestSetId = tc.TestSetDay.TestSetId,
-                    IsComplete = tc.TestSetDay.IsComplete
+                    IsComplete = tc.TestSetDay.IsComplete,
+                    DateDue = tc.TestSetDay.DateDue
                 })
             .ToListAsync();
     }
@@ -76,7 +77,8 @@ public class TesterReportRepository : ITesterReportRepository
                     RequiredPsi = mdr.RequiredPsi,
                     PieceType = tc.TestSetDay.TestSet.Placement.PieceType,
                     TestSetId = tc.TestSetDay.TestSetId,
-                    IsComplete = tc.TestSetDay.IsComplete
+                    IsComplete = tc.TestSetDay.IsComplete,
+                    DateDue = tc.TestSetDay.DateDue
                 })
             .ToListAsync();
     }
@@ -109,7 +111,8 @@ public class TesterReportRepository : ITesterReportRepository
                     RequiredPsi = mdr.RequiredPsi,
                     PieceType = tc.TestSetDay.TestSet.Placement.PieceType,
                     TestSetId = tc.TestSetDay.TestSetId,
-                    IsComplete = tc.TestSetDay.IsComplete
+                    IsComplete = tc.TestSetDay.IsComplete,
+                    DateDue = tc.TestSetDay.DateDue
                 })
             .ToListAsync();
     }
