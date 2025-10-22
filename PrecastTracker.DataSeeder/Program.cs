@@ -78,6 +78,12 @@ class Program
         Console.WriteLine("  FullProductionWeek");
         Console.WriteLine("    A complete week of production across multiple jobs and beds without test data.");
         Console.WriteLine();
+        Console.WriteLine("  TesterDashboard");
+        Console.WriteLine("    Comprehensive tester scenario with:");
+        Console.WriteLine("      - Untested placements (gap detection) from 1, 3, and 5 days ago");
+        Console.WriteLine("      - Tests due today (1-day, 7-day, 28-day)");
+        Console.WriteLine("      - Tests due tomorrow (1-day, 7-day)");
+        Console.WriteLine();
         Console.WriteLine("Exit Codes:");
         Console.WriteLine("  0 - Success");
         Console.WriteLine("  1 - Invalid scenario name");
@@ -92,6 +98,7 @@ class Program
             "OverdueTests" => true,
             "PlacementsWithMissingTests" => true,
             "FullProductionWeek" => true,
+            "TesterDashboard" => true,
             _ => false
         };
     }
@@ -114,6 +121,9 @@ class Program
                 break;
             case "FullProductionWeek":
                 SeedFullProductionWeek();
+                break;
+            case "TesterDashboard":
+                SeedTesterDashboard();
                 break;
         }
     }
@@ -669,6 +679,249 @@ class Program
 
         var friday = monday.AddDays(4);
         HighLevelEntityHelpers.CreatePlacement(_context, "25-031", "Hospital Wing", 2, "4500.2", friday, "Walls", new TimeSpan(7, 0, 0), 19.0m, "B2");
+    }
+
+    private static void SeedTesterDashboard()
+    {
+        var today = DateTime.Today;
+
+        // ========================================
+        // GAP DETECTION: Untested Placements
+        // ========================================
+
+        // Gap 1: Placement from 5 days ago - NO TEST SET (urgent - 3+ days)
+        HighLevelEntityHelpers.CreatePlacement(
+            context: _context,
+            jobCode: "25-040",
+            jobName: "Harbor Bridge",
+            bedId: 12,
+            mixDesignCode: "5000.8",
+            productionDate: today.AddDays(-5),
+            pieceType: "Beams",
+            startTime: new TimeSpan(8, 30, 0),
+            volume: 18.5m,
+            ovenId: "E1"
+        );
+
+        // Gap 2: Placement from 3 days ago - NO TEST SET (urgent - 3+ days boundary)
+        HighLevelEntityHelpers.CreatePlacement(
+            context: _context,
+            jobCode: "25-041",
+            jobName: "Convention Center",
+            bedId: 8,
+            mixDesignCode: "4500.2",
+            productionDate: today.AddDays(-3),
+            pieceType: "Columns",
+            startTime: new TimeSpan(10, 15, 0),
+            volume: 14.2m,
+            ovenId: "F2"
+        );
+
+        // Gap 3: Placement from 1 day ago - NO TEST SET (recent gap)
+        HighLevelEntityHelpers.CreatePlacement(
+            context: _context,
+            jobCode: "25-042",
+            jobName: "Airport Terminal",
+            bedId: 5,
+            mixDesignCode: "3500.5",
+            productionDate: today.AddDays(-1),
+            pieceType: "Walls",
+            startTime: new TimeSpan(14, 45, 0),
+            volume: 22.0m,
+            ovenId: "G1"
+        );
+
+        // ========================================
+        // TESTS DUE TODAY
+        // ========================================
+
+        // Placement from 1 day ago with 1-day test due today
+        var placementToday1 = HighLevelEntityHelpers.CreatePlacement(
+            context: _context,
+            jobCode: "25-043",
+            jobName: "University Lab",
+            bedId: 3,
+            mixDesignCode: "824.1",
+            productionDate: today.AddDays(-1),
+            pieceType: "Slabs",
+            startTime: new TimeSpan(9, 0, 0),
+            volume: 12.5m,
+            ovenId: "H1"
+        );
+
+        var testSetToday1 = HighLevelEntityHelpers.CreateTestSet(_context, placementToday1.PlacementId);
+        var testSetDayToday1 = HighLevelEntityHelpers.CreateTestSetDay(
+            context: _context,
+            testSetId: testSetToday1.TestSetId,
+            dayNum: 1,
+            dateDue: today,
+            dateTested: null,
+            comments: null
+        );
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDayToday1.TestSetDayId, "TD1-1-25-043", null);
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDayToday1.TestSetDayId, "TD1-2-25-043", null);
+
+        // Placement from 7 days ago with 7-day test due today
+        var placementToday2 = HighLevelEntityHelpers.CreatePlacement(
+            context: _context,
+            jobCode: "25-044",
+            jobName: "Fire Station",
+            bedId: 7,
+            mixDesignCode: "1200.3",
+            productionDate: today.AddDays(-7),
+            pieceType: "Walls",
+            startTime: new TimeSpan(11, 30, 0),
+            volume: 16.8m,
+            ovenId: "I1"
+        );
+
+        var testSetToday2 = HighLevelEntityHelpers.CreateTestSet(_context, placementToday2.PlacementId);
+
+        // 1-day test completed 6 days ago
+        var testSetDayToday2_Day1 = HighLevelEntityHelpers.CreateTestSetDay(
+            context: _context,
+            testSetId: testSetToday2.TestSetId,
+            dayNum: 1,
+            dateDue: today.AddDays(-6),
+            dateTested: today.AddDays(-6),
+            comments: "Good strength"
+        );
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDayToday2_Day1.TestSetDayId, "TD2-1-25-044", 3400);
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDayToday2_Day1.TestSetDayId, "TD2-2-25-044", 3350);
+
+        // 7-day test due today
+        var testSetDayToday2_Day7 = HighLevelEntityHelpers.CreateTestSetDay(
+            context: _context,
+            testSetId: testSetToday2.TestSetId,
+            dayNum: 7,
+            dateDue: today,
+            dateTested: null,
+            comments: null
+        );
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDayToday2_Day7.TestSetDayId, "TD2-7-25-044", null);
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDayToday2_Day7.TestSetDayId, "TD2-8-25-044", null);
+
+        // Placement from 28 days ago with 28-day test due today
+        var placementToday3 = HighLevelEntityHelpers.CreatePlacement(
+            context: _context,
+            jobCode: "25-045",
+            jobName: "Medical Plaza",
+            bedId: 10,
+            mixDesignCode: "2515.11",
+            productionDate: today.AddDays(-28),
+            pieceType: "Tees",
+            startTime: new TimeSpan(8, 15, 0),
+            volume: 19.3m,
+            ovenId: null
+        );
+
+        var testSetToday3 = HighLevelEntityHelpers.CreateTestSet(_context, placementToday3.PlacementId);
+
+        // 1-day test completed 27 days ago
+        var testSetDayToday3_Day1 = HighLevelEntityHelpers.CreateTestSetDay(
+            context: _context,
+            testSetId: testSetToday3.TestSetId,
+            dayNum: 1,
+            dateDue: today.AddDays(-27),
+            dateTested: today.AddDays(-27),
+            comments: "Strong results"
+        );
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDayToday3_Day1.TestSetDayId, "TD3-1-25-045", 5200);
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDayToday3_Day1.TestSetDayId, "TD3-2-25-045", 5150);
+
+        // 7-day test completed 21 days ago
+        var testSetDayToday3_Day7 = HighLevelEntityHelpers.CreateTestSetDay(
+            context: _context,
+            testSetId: testSetToday3.TestSetId,
+            dayNum: 7,
+            dateDue: today.AddDays(-21),
+            dateTested: today.AddDays(-21),
+            comments: "Excellent strength"
+        );
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDayToday3_Day7.TestSetDayId, "TD3-7-25-045", 6350);
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDayToday3_Day7.TestSetDayId, "TD3-8-25-045", 6280);
+
+        // 28-day test due today
+        var testSetDayToday3_Day28 = HighLevelEntityHelpers.CreateTestSetDay(
+            context: _context,
+            testSetId: testSetToday3.TestSetId,
+            dayNum: 28,
+            dateDue: today,
+            dateTested: null,
+            comments: null
+        );
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDayToday3_Day28.TestSetDayId, "TD3-28-25-045", null);
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDayToday3_Day28.TestSetDayId, "TD3-29-25-045", null);
+
+        // ========================================
+        // TESTS DUE TOMORROW
+        // ========================================
+
+        // Placement from today with 1-day test due tomorrow
+        var placementTomorrow1 = HighLevelEntityHelpers.CreatePlacement(
+            context: _context,
+            jobCode: "25-046",
+            jobName: "Tech Campus",
+            bedId: 6,
+            mixDesignCode: "824.1",
+            productionDate: today,
+            pieceType: "Columns",
+            startTime: new TimeSpan(13, 20, 0),
+            volume: 11.2m,
+            ovenId: "J1"
+        );
+
+        var testSetTomorrow1 = HighLevelEntityHelpers.CreateTestSet(_context, placementTomorrow1.PlacementId);
+        var testSetDayTomorrow1 = HighLevelEntityHelpers.CreateTestSetDay(
+            context: _context,
+            testSetId: testSetTomorrow1.TestSetId,
+            dayNum: 1,
+            dateDue: today.AddDays(1),
+            dateTested: null,
+            comments: null
+        );
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDayTomorrow1.TestSetDayId, "TM1-1-25-046", null);
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDayTomorrow1.TestSetDayId, "TM1-2-25-046", null);
+
+        // Placement from 6 days ago with 7-day test due tomorrow
+        var placementTomorrow2 = HighLevelEntityHelpers.CreatePlacement(
+            context: _context,
+            jobCode: "25-047",
+            jobName: "Recreation Center",
+            bedId: 9,
+            mixDesignCode: "1200.3",
+            productionDate: today.AddDays(-6),
+            pieceType: "Beams",
+            startTime: new TimeSpan(10, 0, 0),
+            volume: 15.7m,
+            ovenId: "K1"
+        );
+
+        var testSetTomorrow2 = HighLevelEntityHelpers.CreateTestSet(_context, placementTomorrow2.PlacementId);
+
+        // 1-day test completed 5 days ago
+        var testSetDayTomorrow2_Day1 = HighLevelEntityHelpers.CreateTestSetDay(
+            context: _context,
+            testSetId: testSetTomorrow2.TestSetId,
+            dayNum: 1,
+            dateDue: today.AddDays(-5),
+            dateTested: today.AddDays(-5),
+            comments: "Normal strength"
+        );
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDayTomorrow2_Day1.TestSetDayId, "TM2-1-25-047", 3300);
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDayTomorrow2_Day1.TestSetDayId, "TM2-2-25-047", 3250);
+
+        // 7-day test due tomorrow
+        var testSetDayTomorrow2_Day7 = HighLevelEntityHelpers.CreateTestSetDay(
+            context: _context,
+            testSetId: testSetTomorrow2.TestSetId,
+            dayNum: 7,
+            dateDue: today.AddDays(1),
+            dateTested: null,
+            comments: null
+        );
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDayTomorrow2_Day7.TestSetDayId, "TM2-7-25-047", null);
+        HighLevelEntityHelpers.CreateTestCylinder(_context, testSetDayTomorrow2_Day7.TestSetDayId, "TM2-8-25-047", null);
     }
 
     #endregion
