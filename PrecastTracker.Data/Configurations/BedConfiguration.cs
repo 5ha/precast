@@ -11,5 +11,9 @@ public class BedConfiguration : IEntityTypeConfiguration<Bed>
         builder.HasKey(b => b.BedId);
 
         builder.Property(b => b.BedId);
+
+        builder.Property(b => b.Status)
+            .HasConversion<string>()
+            .IsRequired();
     }
 }

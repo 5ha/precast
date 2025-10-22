@@ -10,7 +10,7 @@ This document defines the roles that directly interact with the PrecastTracker a
 - Create **Pours** (assign Job to Bed)
 - View **Bed** availability
 - Create **ProductionDay** records
-- View/update **BedStatusLog**
+- View/update **Bed** status
 
 ---
 
