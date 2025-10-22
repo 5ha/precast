@@ -700,6 +700,7 @@ export interface ITestCylinderQueueResponse {
 export class UntestedPlacementResponse implements IUntestedPlacementResponse {
     pourId?: number;
     placementId?: number;
+    bedId?: number;
     castDate?: Date;
     castTime?: string | undefined;
     jobCode?: string | undefined;
@@ -721,6 +722,7 @@ export class UntestedPlacementResponse implements IUntestedPlacementResponse {
         if (_data) {
             this.pourId = _data["pourId"];
             this.placementId = _data["placementId"];
+            this.bedId = _data["bedId"];
             this.castDate = _data["castDate"] ? new Date(_data["castDate"].toString()) : undefined as any;
             this.castTime = _data["castTime"];
             this.jobCode = _data["jobCode"];
@@ -742,6 +744,7 @@ export class UntestedPlacementResponse implements IUntestedPlacementResponse {
         data = typeof data === 'object' ? data : {};
         data["pourId"] = this.pourId;
         data["placementId"] = this.placementId;
+        data["bedId"] = this.bedId;
         data["castDate"] = this.castDate ? this.castDate.toISOString() : undefined as any;
         data["castTime"] = this.castTime;
         data["jobCode"] = this.jobCode;
@@ -756,6 +759,7 @@ export class UntestedPlacementResponse implements IUntestedPlacementResponse {
 export interface IUntestedPlacementResponse {
     pourId?: number;
     placementId?: number;
+    bedId?: number;
     castDate?: Date;
     castTime?: string | undefined;
     jobCode?: string | undefined;

@@ -476,6 +476,7 @@ public class TesterReportRepositoryTests
         // Assert - Verify all projection fields are correctly populated
         Assert.Equal(testData.PourUntested.PourId, projection.PourId);
         Assert.Equal(testData.PlacementUntested.PlacementId, projection.PlacementId);
+        Assert.Equal(testData.PourUntested.BedId, projection.BedId);
         Assert.Equal(today.AddDays(-3), projection.CastDate);
         Assert.Equal(new TimeSpan(14, 30, 0), projection.CastTime);
         Assert.Equal("UNTESTED", projection.JobCode);

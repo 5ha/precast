@@ -4,6 +4,7 @@ public class UntestedPlacementProjection
 {
     public int PourId { get; set; }
     public int PlacementId { get; set; }
+    public int BedId { get; set; }
     public DateTime CastDate { get; set; }
     public TimeSpan? CastTime { get; set; }
     public string JobCode { get; set; } = string.Empty;

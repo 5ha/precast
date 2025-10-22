@@ -81,6 +81,7 @@ public class TesterReportRepository : ITesterReportRepository
             {
                 PourId = p.PourId,
                 PlacementId = p.PlacementId,
+                BedId = p.Pour.BedId,
                 CastDate = p.MixBatch.ProductionDay.Date,
                 CastTime = p.StartTime,
                 JobCode = p.Pour.Job.Code,

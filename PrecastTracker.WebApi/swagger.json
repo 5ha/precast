@@ -580,6 +580,10 @@
             "type": "integer",
             "format": "int32"
           },
+          "bedId": {
+            "type": "integer",
+            "format": "int32"
+          },
           "castDate": {
             "type": "string",
             "format": "date-time"

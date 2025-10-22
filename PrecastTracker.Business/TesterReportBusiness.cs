@@ -92,6 +92,7 @@ public class TesterReportBusiness : BaseBusiness<TesterReportBusiness>, ITesterR
         {
             PourId = projection.PourId,
             PlacementId = projection.PlacementId,
+            BedId = projection.BedId,
             CastDate = projection.CastDate,
             CastTime = projection.CastTime,
             JobCode = projection.JobCode,
